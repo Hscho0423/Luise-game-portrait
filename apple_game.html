@@ -197,12 +197,30 @@
       background: #2d5016;
       border: 2px solid #ffe066;
       border-radius: 12px;
-      padding: 28px 32px;
+      padding: 24px 22px;
       text-align: center;
       min-width: 260px;
-      max-width: 90vw;
+      max-width: min(92vw, 380px);
+      max-height: 92vh;
+      overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
     }
+    .overlay-luise-img {
+      display: none;
+      width: min(260px, 78vw);
+      max-height: 36vh;
+      object-fit: cover;
+      border-radius: 12px;
+      margin: 0 auto 14px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+    }
+    .modal-box.show-luise .overlay-luise-img { display: block; }
+    .modal-box.show-luise.win { background: #fff8e8; border-color: #ffb703; }
+    .modal-box.show-luise.win h2,
+    .modal-box.show-luise.win p { color: #3d2c1a; }
+    .modal-box.show-luise.fail { background: #f0ebe4; border-color: #8b7355; }
+    .modal-box.show-luise.fail h2,
+    .modal-box.show-luise.fail p { color: #3a3028; }
     .modal-box h2 {
       margin: 0 0 12px;
       font-size: 1.25rem;
@@ -301,7 +319,8 @@
   </div>
 
   <div id="overlay" aria-hidden="true">
-    <div class="modal-box">
+    <div class="modal-box" id="overlay-box">
+      <img id="overlay-luise-img" class="overlay-luise-img" src="" alt="" />
       <h2 id="overlay-title">시간 종료</h2>
       <p id="final-score"></p>
       <div class="modal-actions">
@@ -339,6 +358,8 @@
     const resumeBtn = document.getElementById("resume-btn");
     const quitBtn = document.getElementById("quit-btn");
     const overlay = document.getElementById("overlay");
+    const overlayBox = document.getElementById("overlay-box");
+    const overlayLuiseImg = document.getElementById("overlay-luise-img");
     const overlayTitleEl = document.getElementById("overlay-title");
     const finalScoreEl = document.getElementById("final-score");
     const restartBtn = document.getElementById("restart-btn");
@@ -733,6 +754,23 @@
       return ps[rmax + 1][cmax + 1] - ps[rmin][cmax + 1] - ps[rmax + 1][cmin] + ps[rmin][cmin];
     }
 
+    function resetOverlayPresentation() {
+      overlayBox.classList.remove("show-luise", "win", "fail");
+      overlayLuiseImg.removeAttribute("src");
+      overlayLuiseImg.alt = "";
+    }
+
+    function showOverlayLuise(type) {
+      overlayBox.classList.add("show-luise", type);
+      if (type === "win") {
+        overlayLuiseImg.src = "./luise-happy.png";
+        overlayLuiseImg.alt = "행복해하는 루이";
+      } else {
+        overlayLuiseImg.src = "./luise-messy.png";
+        overlayLuiseImg.alt = "꼬질꼬질해진 루이";
+      }
+    }
+
     function anyMoveExists() {
       const ps = buildPrefixSum();
       for (let r0 = 0; r0 < ROWS; r0++) {
@@ -1053,22 +1091,23 @@
       pauseBtn.classList.remove("paused");
       pauseBtn.setAttribute("aria-pressed", "false");
       canvas.classList.add("ended");
+      resetOverlayPresentation();
       const diffLabel = DIFFICULTY[selectedDifficulty].label;
+      const scoreLine =
+        "\n\n난이도: " + diffLabel + "\n최종 점수: " + score + "점 (없앤 사과 " + score + "개)";
+
       if (reason === "nomoves") {
-        overlayTitleEl.textContent = "게임 종료";
+        overlayTitleEl.textContent = "퍼즐 클리어!";
         finalScoreEl.textContent =
-          "더이상 타일을 찾을 수 없어 게임을 종료합니다!\n\n난이도: " +
-          diffLabel +
-          "\n최종 점수: " +
-          score +
-          "점 (없앤 사과 " +
-          score +
-          "개)";
+          "축하합니다! 모든 퍼즐을 풀었습니다. 루이가 행복해합니다!" + scoreLine;
+        showOverlayLuise("win");
         remainBtn.style.display = "none";
-      } else {
+      } else if (reason === "time") {
         overlayTitleEl.textContent = "시간 종료";
         finalScoreEl.textContent =
-          "난이도: " + diffLabel + "\n최종 점수: " + score + "점 (없앤 사과 " + score + "개)";
+          "당신을 제한시간내에 퍼즐을 풀지 못했습니다.. 루이가 다시 꼬질꼬질한 모습이 되었습니다" +
+          scoreLine;
+        showOverlayLuise("fail");
         remainBtn.style.display = anyMoveExists() ? "inline-block" : "none";
       }
       overlay.classList.add("show");
@@ -1093,6 +1132,7 @@
     function startNewGame() {
       overlay.classList.remove("show");
       overlay.setAttribute("aria-hidden", "true");
+      resetOverlayPresentation();
       pauseOverlay.classList.remove("show");
       pauseOverlay.setAttribute("aria-hidden", "true");
       canvas.classList.remove("ended");

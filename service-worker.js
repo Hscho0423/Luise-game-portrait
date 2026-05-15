@@ -1,10 +1,12 @@
-const CACHE_NAME = "loui-cherry-vertical-v1";
+const CACHE_NAME = "loui-cherry-vertical-v2";
 const ASSETS = [
   "./index.html",
   "./apple_game.html",
   "./manifest.json",
   "./icon.png",
-  "./clear-pop.png"
+  "./clear-pop.png",
+  "./luise-messy.png",
+  "./luise-happy.png"
 ];
 
 self.addEventListener("install", (event) => {
