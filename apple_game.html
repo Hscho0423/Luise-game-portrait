@@ -101,7 +101,7 @@
       font-size: 0.8rem;
       opacity: 0.7;
     }
-    #timer-input {
+    #timer-select {
       width: 100%;
       font: inherit;
       font-size: 1rem;
@@ -109,23 +109,8 @@
       border-radius: 10px;
       border: 2px solid rgba(0, 0, 0, 0.12);
       background: rgba(255, 255, 255, 0.9);
-    }
-  .timer-presets {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .timer-preset {
-      font: inherit;
-      font-size: 0.82rem;
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(26, 74, 138, 0.25);
-      background: rgba(255, 255, 255, 0.9);
       cursor: pointer;
     }
-    .timer-preset:hover { background: rgba(26, 74, 138, 0.08); }
     #start-btn {
       width: min(400px, 100%);
       margin-top: 20px;
@@ -148,7 +133,7 @@
       padding: max(8px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
     }
     #game-hud {
-      width: min(520px, 100%);
+      width: min(98vw, 100%);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -266,33 +251,28 @@
             <input type="radio" name="difficulty" value="easy" checked />
             <span class="difficulty-text">
               <strong>쉬움</strong>
-              <span>가로 4 × 세로 8</span>
+              <span>가로 6 × 세로 12</span>
             </span>
           </label>
           <label class="difficulty-option">
             <input type="radio" name="difficulty" value="normal" />
             <span class="difficulty-text">
               <strong>보통</strong>
-              <span>가로 5 × 세로 10</span>
+              <span>가로 7 × 세로 14</span>
             </span>
           </label>
           <label class="difficulty-option">
             <input type="radio" name="difficulty" value="hard" />
             <span class="difficulty-text">
               <strong>어려움</strong>
-              <span>가로 6 × 세로 12</span>
+              <span>가로 8 × 세로 16</span>
             </span>
           </label>
         </div>
       </div>
       <div class="setting-block">
-        <label class="setting-label" for="timer-input">제한 시간 (초)</label>
-        <input id="timer-input" type="number" min="10" max="999" step="1" value="120" inputmode="numeric" />
-        <div class="timer-presets" aria-label="시간 빠른 선택">
-          <button type="button" class="timer-preset" data-seconds="60">60초</button>
-          <button type="button" class="timer-preset" data-seconds="120">120초</button>
-          <button type="button" class="timer-preset" data-seconds="180">180초</button>
-        </div>
+        <label class="setting-label" for="timer-select">제한 시간</label>
+        <select id="timer-select" aria-label="제한 시간 선택"></select>
       </div>
     </div>
     <button type="button" id="start-btn">시작하기</button>
@@ -334,9 +314,9 @@
 
   <script>
     const DIFFICULTY = {
-      easy: { cols: 4, rows: 8, label: "쉬움" },
-      normal: { cols: 5, rows: 10, label: "보통" },
-      hard: { cols: 6, rows: 12, label: "어려움" },
+      easy: { cols: 6, rows: 12, label: "쉬움", clusterFill: 0.38 },
+      normal: { cols: 7, rows: 14, label: "보통", clusterFill: 0.22 },
+      hard: { cols: 8, rows: 16, label: "어려움", clusterFill: 0 },
     };
 
     let COLS = DIFFICULTY.easy.cols;
@@ -349,7 +329,7 @@
     const startScreen = document.getElementById("start-screen");
     const gameScreen = document.getElementById("game-screen");
     const startBtn = document.getElementById("start-btn");
-    const timerInput = document.getElementById("timer-input");
+    const timerSelect = document.getElementById("timer-select");
     const canvas = document.getElementById("board");
     const ctx = canvas.getContext("2d");
     const hudTimeEl = document.getElementById("hud-time");
@@ -380,7 +360,18 @@
     }
 
     function readTimerSeconds() {
-      return Math.max(10, Math.min(999, Math.floor(Number(timerInput.value) || 120)));
+      const sec = Math.floor(Number(timerSelect.value) || 120);
+      return Math.max(20, Math.min(300, sec));
+    }
+
+    function initTimerSelect() {
+      for (let sec = 20; sec <= 300; sec += 10) {
+        const opt = document.createElement("option");
+        opt.value = String(sec);
+        opt.textContent = sec + "초";
+        if (sec === 120) opt.selected = true;
+        timerSelect.appendChild(opt);
+      }
     }
 
     function formatTime(sec) {
@@ -391,12 +382,12 @@
 
     function computeCellSize() {
       const hudH = document.getElementById("game-hud").offsetHeight || 52;
-      const padV = 24 + hudH;
-      const maxW = Math.min(window.innerWidth * 0.96, 440);
-      const maxH = Math.max(200, window.innerHeight - padV - 20);
-      const cellW = Math.floor((maxW - PAD * 2) / COLS);
-      const cellH = Math.floor((maxH - PAD * 2) / ROWS);
-      return Math.max(22, Math.min(40, Math.min(cellW, cellH)));
+      const padV = 16 + hudH;
+      const maxW = window.innerWidth * 0.98;
+      const maxH = Math.max(180, window.innerHeight - padV - 12);
+      const cellW = (maxW - PAD * 2) / COLS;
+      const cellH = (maxH - PAD * 2) / ROWS;
+      return Math.max(26, Math.floor(Math.min(cellW, cellH)));
     }
 
     function resizeCanvas() {
@@ -493,6 +484,111 @@
 
     function rand1to9() {
       return 1 + Math.floor(Math.random() * 9);
+    }
+
+    const SUM_TEN_PAIR_SHAPES = [
+      { w: 2, h: 1, values: [1, 9] },
+      { w: 2, h: 1, values: [2, 8] },
+      { w: 2, h: 1, values: [3, 7] },
+      { w: 2, h: 1, values: [4, 6] },
+      { w: 2, h: 1, values: [5, 5] },
+      { w: 1, h: 2, values: [1, 9] },
+      { w: 1, h: 2, values: [2, 8] },
+      { w: 1, h: 2, values: [3, 7] },
+      { w: 1, h: 2, values: [4, 6] },
+      { w: 1, h: 2, values: [5, 5] },
+    ];
+    const SUM_TEN_TRIPLE_SHAPES = [
+      { w: 3, h: 1, values: [1, 2, 7] },
+      { w: 3, h: 1, values: [1, 3, 6] },
+      { w: 3, h: 1, values: [1, 4, 5] },
+      { w: 3, h: 1, values: [2, 3, 5] },
+      { w: 3, h: 1, values: [2, 2, 6] },
+      { w: 3, h: 1, values: [3, 3, 4] },
+      { w: 1, h: 3, values: [1, 2, 7] },
+      { w: 1, h: 3, values: [1, 3, 6] },
+      { w: 1, h: 3, values: [1, 4, 5] },
+      { w: 1, h: 3, values: [2, 3, 5] },
+      { w: 1, h: 3, values: [2, 2, 6] },
+      { w: 1, h: 3, values: [3, 3, 4] },
+    ];
+    const SUM_TEN_QUAD_SHAPES = [
+      { w: 2, h: 2, values: [1, 2, 3, 4] },
+      { w: 2, h: 2, values: [1, 1, 3, 5] },
+      { w: 2, h: 2, values: [2, 2, 2, 4] },
+      { w: 2, h: 2, values: [1, 2, 2, 5] },
+      { w: 4, h: 1, values: [1, 1, 2, 6] },
+      { w: 1, h: 4, values: [1, 2, 3, 4] },
+    ];
+
+    function pickClusterShape() {
+      const roll = Math.random();
+      if (selectedDifficulty === "easy") {
+        if (roll < 0.68) return SUM_TEN_PAIR_SHAPES[Math.floor(Math.random() * SUM_TEN_PAIR_SHAPES.length)];
+        if (roll < 0.93) return SUM_TEN_TRIPLE_SHAPES[Math.floor(Math.random() * SUM_TEN_TRIPLE_SHAPES.length)];
+        return SUM_TEN_QUAD_SHAPES[Math.floor(Math.random() * SUM_TEN_QUAD_SHAPES.length)];
+      }
+      if (selectedDifficulty === "normal") {
+        if (roll < 0.5) return SUM_TEN_PAIR_SHAPES[Math.floor(Math.random() * SUM_TEN_PAIR_SHAPES.length)];
+        if (roll < 0.88) return SUM_TEN_TRIPLE_SHAPES[Math.floor(Math.random() * SUM_TEN_TRIPLE_SHAPES.length)];
+        return SUM_TEN_QUAD_SHAPES[Math.floor(Math.random() * SUM_TEN_QUAD_SHAPES.length)];
+      }
+      return null;
+    }
+
+    function canPlaceCluster(r, c, w, h) {
+      if (r + h > ROWS || c + w > COLS) return false;
+      for (let dr = 0; dr < h; dr++) {
+        for (let dc = 0; dc < w; dc++) {
+          if (grid[r + dr][c + dc] != null) return false;
+        }
+      }
+      return true;
+    }
+
+    function placeCluster(r, c, shape) {
+      let i = 0;
+      for (let dr = 0; dr < shape.h; dr++) {
+        for (let dc = 0; dc < shape.w; dc++) {
+          grid[r + dr][c + dc] = shape.values[i++];
+        }
+      }
+    }
+
+    function countPlacedCells() {
+      let n = 0;
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] != null) n++;
+        }
+      }
+      return n;
+    }
+
+    function plantSumTenClusters() {
+      const fillRatio = DIFFICULTY[selectedDifficulty].clusterFill || 0;
+      if (fillRatio <= 0) return;
+      const targetCells = Math.floor(ROWS * COLS * fillRatio);
+      let fails = 0;
+      const maxFails = ROWS * COLS * 3;
+      while (countPlacedCells() < targetCells && fails < maxFails) {
+        const shape = pickClusterShape();
+        if (!shape) break;
+        const maxR = ROWS - shape.h;
+        const maxC = COLS - shape.w;
+        if (maxR < 0 || maxC < 0) {
+          fails++;
+          continue;
+        }
+        const r = Math.floor(Math.random() * (maxR + 1));
+        const c = Math.floor(Math.random() * (maxC + 1));
+        if (canPlaceCluster(r, c, shape.w, shape.h)) {
+          placeCluster(r, c, shape);
+          fails = 0;
+        } else {
+          fails++;
+        }
+      }
     }
 
     let grid = [];
@@ -981,9 +1077,17 @@
     }
 
     function buildFullGrid() {
-      grid = Array.from({ length: ROWS }, () =>
-        Array.from({ length: COLS }, () => rand1to9())
-      );
+      let tries = 0;
+      do {
+        grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+        plantSumTenClusters();
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (grid[r][c] == null) grid[r][c] = rand1to9();
+          }
+        }
+        tries++;
+      } while (!anyMoveExists() && tries < 30);
     }
 
     function startNewGame() {
@@ -1022,7 +1126,7 @@
     function beginGameFromStart() {
       applyDifficulty(getSelectedDifficulty());
       GAME_SECONDS = readTimerSeconds();
-      timerInput.value = String(GAME_SECONDS);
+      timerSelect.value = String(GAME_SECONDS);
       showScreen("game");
       startNewGame();
     }
@@ -1133,11 +1237,7 @@
 
     startBtn.addEventListener("click", beginGameFromStart);
 
-    document.querySelectorAll(".timer-preset").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        timerInput.value = btn.dataset.seconds;
-      });
-    });
+    initTimerSelect();
 
     pauseBtn.addEventListener("click", () => {
       if (!gameRunning) return;
