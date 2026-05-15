@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#bcdcff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="루이 체리 게임" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="./icon.png" />
+  <title>루이 체리 게임 — 합이 10</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: #bcdcff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: #1a1a1a;
+      overflow-x: hidden;
+    }
+    .screen {
+      display: none;
+      min-height: 100vh;
+      min-height: 100dvh;
+      flex-direction: column;
+    }
+    .screen.active { display: flex; }
+
+    /* --- 시작 화면 --- */
+    #start-screen {
+      align-items: center;
+      padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+    }
+    .game-title {
+      margin: 0 0 28px;
+      font-size: clamp(1.5rem, 6vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      text-align: center;
+    }
+    .settings-card {
+      width: min(400px, 100%);
+      flex: 1;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+      padding: 22px 20px;
+      backdrop-filter: blur(8px);
+    }
+    .settings-card h2 {
+      margin: 0 0 14px;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .setting-block { margin-bottom: 22px; }
+    .setting-block:last-child { margin-bottom: 0; }
+    .setting-label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      opacity: 0.9;
+    }
+    .difficulty-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .difficulty-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 2px solid rgba(26, 74, 138, 0.15);
+      background: rgba(255, 255, 255, 0.85);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .difficulty-option:has(input:checked) {
+      border-color: #1a4a8a;
+      background: rgba(26, 74, 138, 0.08);
+    }
+    .difficulty-option input {
+      width: 18px;
+      height: 18px;
+      accent-color: #1a4a8a;
+      flex-shrink: 0;
+    }
+    .difficulty-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .difficulty-text strong { font-size: 0.95rem; }
+    .difficulty-text span {
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+    #timer-input {
+      width: 100%;
+      font: inherit;
+      font-size: 1rem;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 2px solid rgba(0, 0, 0, 0.12);
+      background: rgba(255, 255, 255, 0.9);
+    }
+  .timer-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .timer-preset {
+      font: inherit;
+      font-size: 0.82rem;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(26, 74, 138, 0.25);
+      background: rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+    }
+    .timer-preset:hover { background: rgba(26, 74, 138, 0.08); }
+    #start-btn {
+      width: min(400px, 100%);
+      margin-top: 20px;
+      font: inherit;
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 12px;
+      background: #1a4a8a;
+      color: white;
+      cursor: pointer;
+    }
+    #start-btn:hover { filter: brightness(1.06); }
+    #start-btn:active { transform: scale(0.99); }
+
+    /* --- 게임 화면 --- */
+    #game-screen {
+      align-items: center;
+      padding: max(8px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+    }
+    #game-hud {
+      width: min(520px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      backdrop-filter: blur(6px);
+    }
+    .hud-stat {
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .hud-stat span { opacity: 0.75; font-weight: 500; font-size: 0.8rem; }
+    #pause-btn {
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #1a4a8a;
+      color: white;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #pause-btn.paused { background: #2d5016; }
+    #board-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 0;
+    }
+    canvas {
+      display: block;
+      cursor: crosshair;
+      border-radius: 8px;
+      touch-action: none;
+      max-width: 100%;
+      height: auto;
+    }
+    canvas.ended { pointer-events: none; cursor: default; opacity: 0.85; }
+
+    #overlay, #pause-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      padding: 20px;
+    }
+    #overlay.show, #pause-overlay.show { display: flex; }
+    .modal-box {
+      background: #2d5016;
+      border: 2px solid #ffe066;
+      border-radius: 12px;
+      padding: 28px 32px;
+      text-align: center;
+      min-width: 260px;
+      max-width: 90vw;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+    .modal-box h2 {
+      margin: 0 0 12px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+  .modal-box p {
+      margin: 0 0 20px;
+      font-size: 1.05rem;
+      color: #fff;
+      white-space: pre-line;
+      line-height: 1.5;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .modal-btn {
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      background: #ffe066;
+      color: #1a1a1a;
+      cursor: pointer;
+    }
+    .modal-btn.secondary {
+      background: rgba(255, 255, 255, 0.85);
+    }
+    .modal-btn:hover { filter: brightness(1.05); }
+    .modal-btn:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+  <section id="start-screen" class="screen active" aria-label="시작 화면">
+    <h1 class="game-title">루이 체리 게임</h1>
+    <div class="settings-card">
+      <div class="setting-block">
+        <h2>난이도</h2>
+        <div class="difficulty-options" role="radiogroup" aria-label="난이도 선택">
+          <label class="difficulty-option">
+            <input type="radio" name="difficulty" value="easy" checked />
+            <span class="difficulty-text">
+              <strong>쉬움</strong>
+              <span>가로 4 × 세로 8</span>
+            </span>
+          </label>
+          <label class="difficulty-option">
+            <input type="radio" name="difficulty" value="normal" />
+            <span class="difficulty-text">
+              <strong>보통</strong>
+              <span>가로 5 × 세로 10</span>
+            </span>
+          </label>
+          <label class="difficulty-option">
+            <input type="radio" name="difficulty" value="hard" />
+            <span class="difficulty-text">
+              <strong>어려움</strong>
+              <span>가로 6 × 세로 12</span>
+            </span>
+          </label>
+        </div>
+      </div>
+      <div class="setting-block">
+        <label class="setting-label" for="timer-input">제한 시간 (초)</label>
+        <input id="timer-input" type="number" min="10" max="999" step="1" value="120" inputmode="numeric" />
+        <div class="timer-presets" aria-label="시간 빠른 선택">
+          <button type="button" class="timer-preset" data-seconds="60">60초</button>
+          <button type="button" class="timer-preset" data-seconds="120">120초</button>
+          <button type="button" class="timer-preset" data-seconds="180">180초</button>
+        </div>
+      </div>
+    </div>
+    <button type="button" id="start-btn">시작하기</button>
+  </section>
+
+  <section id="game-screen" class="screen" aria-label="게임 화면" hidden>
+    <header id="game-hud">
+      <p class="hud-stat" id="hud-time"><span>남은 시간</span> <strong>—</strong></p>
+      <p class="hud-stat" id="hud-score"><span>점수</span> <strong>0</strong></p>
+      <button type="button" id="pause-btn" aria-pressed="false">일시정지</button>
+    </header>
+    <div id="board-wrap">
+      <canvas id="board" aria-label="게임 보드"></canvas>
+    </div>
+  </section>
+
+  <div id="pause-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <h2>일시정지</h2>
+      <p>게임이 멈춰 있습니다.</p>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn" id="resume-btn">계속하기</button>
+        <button type="button" class="modal-btn secondary" id="quit-btn">설정으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay" aria-hidden="true">
+    <div class="modal-box">
+      <h2 id="overlay-title">시간 종료</h2>
+      <p id="final-score"></p>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn" id="restart-btn">다시 하기</button>
+        <button type="button" class="modal-btn secondary" id="menu-btn">설정으로</button>
+        <button type="button" class="modal-btn secondary" id="remain-btn" style="display:none;">남은 타일 확인하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DIFFICULTY = {
+      easy: { cols: 4, rows: 8, label: "쉬움" },
+      normal: { cols: 5, rows: 10, label: "보통" },
+      hard: { cols: 6, rows: 12, label: "어려움" },
+    };
+
+    let COLS = DIFFICULTY.easy.cols;
+    let ROWS = DIFFICULTY.easy.rows;
+    let CELL = 28;
+    const PAD = 14;
+    let GAME_SECONDS = 120;
+    let selectedDifficulty = "easy";
+
+    const startScreen = document.getElementById("start-screen");
+    const gameScreen = document.getElementById("game-screen");
+    const startBtn = document.getElementById("start-btn");
+    const timerInput = document.getElementById("timer-input");
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const hudTimeEl = document.getElementById("hud-time");
+    const hudScoreEl = document.getElementById("hud-score");
+    const pauseBtn = document.getElementById("pause-btn");
+    const pauseOverlay = document.getElementById("pause-overlay");
+    const resumeBtn = document.getElementById("resume-btn");
+    const quitBtn = document.getElementById("quit-btn");
+    const overlay = document.getElementById("overlay");
+    const overlayTitleEl = document.getElementById("overlay-title");
+    const finalScoreEl = document.getElementById("final-score");
+    const restartBtn = document.getElementById("restart-btn");
+    const menuBtn = document.getElementById("menu-btn");
+    const remainBtn = document.getElementById("remain-btn");
+
+    let fontPx = 14;
+
+    function getSelectedDifficulty() {
+      const checked = document.querySelector('input[name="difficulty"]:checked');
+      return checked ? checked.value : "easy";
+    }
+
+    function applyDifficulty(key) {
+      const d = DIFFICULTY[key] || DIFFICULTY.easy;
+      COLS = d.cols;
+      ROWS = d.rows;
+      selectedDifficulty = key;
+    }
+
+    function readTimerSeconds() {
+      return Math.max(10, Math.min(999, Math.floor(Number(timerInput.value) || 120)));
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return m + ":" + String(s).padStart(2, "0");
+    }
+
+    function computeCellSize() {
+      const hudH = document.getElementById("game-hud").offsetHeight || 52;
+      const padV = 24 + hudH;
+      const maxW = Math.min(window.innerWidth * 0.96, 440);
+      const maxH = Math.max(200, window.innerHeight - padV - 20);
+      const cellW = Math.floor((maxW - PAD * 2) / COLS);
+      const cellH = Math.floor((maxH - PAD * 2) / ROWS);
+      return Math.max(22, Math.min(40, Math.min(cellW, cellH)));
+    }
+
+    function resizeCanvas() {
+      CELL = computeCellSize();
+      fontPx = Math.max(11, Math.round(CELL * 0.56));
+      canvas.width = COLS * CELL + PAD * 2;
+      canvas.height = ROWS * CELL + PAD * 2;
+    }
+
+    function showScreen(name) {
+      const isStart = name === "start";
+      startScreen.classList.toggle("active", isStart);
+      startScreen.hidden = !isStart;
+      gameScreen.classList.toggle("active", !isStart);
+      gameScreen.hidden = isStart;
+    }
+
+    function updateHud() {
+      hudTimeEl.innerHTML = '<span>남은 시간</span> <strong>' + formatTime(timeLeft) + "</strong>";
+      hudScoreEl.innerHTML = '<span>점수</span> <strong>' + score + "</strong>";
+    }
+
+    function buildAppleBodyPath(cx, cy, R) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - R * 0.88);
+      ctx.bezierCurveTo(
+        cx - R * 0.42,
+        cy - R * 0.8,
+        cx - R * 0.95,
+        cy - R * 0.18,
+        cx - R * 0.9,
+        cy + R * 0.4
+      );
+      ctx.bezierCurveTo(cx - R * 0.72, cy + R * 0.85, cx - R * 0.26, cy + R * 1.05, cx, cy + R * 0.98);
+      ctx.bezierCurveTo(cx + R * 0.26, cy + R * 1.05, cx + R * 0.72, cy + R * 0.85, cx + R * 0.9, cy + R * 0.4);
+      ctx.bezierCurveTo(cx + R * 0.95, cy - R * 0.18, cx + R * 0.42, cy - R * 0.8, cx, cy - R * 0.88);
+      ctx.closePath();
+    }
+
+    function drawStemLeaf(cx, cy, R, stemCols) {
+      ctx.save();
+      ctx.strokeStyle = stemCols.stroke;
+      ctx.lineWidth = Math.max(1, R * 0.13);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - R * 0.86);
+      ctx.quadraticCurveTo(cx + R * 0.1, cy - R * 1.12, cx + R * 0.26, cy - R * 0.94);
+      ctx.stroke();
+      ctx.fillStyle = stemCols.leaf;
+      ctx.beginPath();
+      ctx.ellipse(cx + R * 0.34, cy - R * 1.02, R * 0.24, R * 0.13, -0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawAppleTile(cx, cy, R, opts) {
+      const sel = opts.selected;
+      const empty = opts.empty;
+      buildAppleBodyPath(cx, cy, R);
+      if (empty) {
+        ctx.fillStyle = "#bcdcff";
+        ctx.strokeStyle = sel ? "#ffb366" : "rgba(0,0,0,0.08)";
+        ctx.lineWidth = sel ? 2 : 1.2;
+        ctx.fill();
+        ctx.stroke();
+        return;
+      }
+      const g = ctx.createRadialGradient(
+        cx - R * 0.35,
+        cy - R * 0.42,
+        R * 0.08,
+        cx + R * 0.15,
+        cy + R * 0.2,
+        R * 1.25
+      );
+      g.addColorStop(0, "#ffc9c9");
+      g.addColorStop(0.35, "#f94144");
+      g.addColorStop(0.7, "#c1121f");
+      g.addColorStop(1, "#660708");
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = sel ? "#7a0b0d" : "#380607";
+      ctx.lineWidth = sel ? 2.6 : 1.35;
+      ctx.stroke();
+      const hg = ctx.createRadialGradient(cx - R * 0.45, cy - R * 0.5, 0, cx - R * 0.35, cy - R * 0.4, R * 0.85);
+      hg.addColorStop(0, "rgba(255,255,255,0.45)");
+      hg.addColorStop(0.35, "rgba(255,255,255,0.08)");
+      hg.addColorStop(1, "rgba(255,255,255,0)");
+      buildAppleBodyPath(cx, cy, R);
+      ctx.fillStyle = hg;
+      ctx.fill();
+      drawStemLeaf(cx, cy, R, { stroke: "#4e3728", leaf: "#6aaf40" });
+    }
+
+    function rand1to9() {
+      return 1 + Math.floor(Math.random() * 9);
+    }
+
+    let grid = [];
+    let anchor = null;
+    let dragCorner = null;
+    let path = [];
+    let dragging = false;
+    let score = 0;
+    let timeLeft = GAME_SECONDS;
+    let gameRunning = false;
+    let gamePaused = false;
+    let timerId = null;
+    let endedBy = null;
+    let previewMode = false;
+    let previewMoves = [];
+    let previewIndex = 0;
+    let previewRect = null;
+    let dragStartPos = null;
+    let dragNowPos = null;
+    const CLEAR_POP_MS = 500;
+    const CLEAR_POP_SRC = "./clear-pop.png";
+    const clearPopImage = new Image();
+    let clearPopReady = false;
+    let clearPopEffects = [];
+    let clearPopRafId = null;
+    clearPopImage.addEventListener("load", () => {
+      clearPopReady = true;
+      draw();
+    });
+    clearPopImage.src = CLEAR_POP_SRC;
+
+    function addClearPopEffects(cells) {
+      const until = performance.now() + CLEAR_POP_MS;
+      for (const [r, c] of cells) {
+        clearPopEffects.push({ r, c, until });
+      }
+      ensureClearPopLoop();
+    }
+
+    function ensureClearPopLoop() {
+      if (clearPopRafId != null) return;
+      const tick = () => {
+        const now = performance.now();
+        clearPopEffects = clearPopEffects.filter((e) => e.until > now);
+        draw();
+        if (clearPopEffects.length > 0) {
+          clearPopRafId = requestAnimationFrame(tick);
+        } else {
+          clearPopRafId = null;
+        }
+      };
+      clearPopRafId = requestAnimationFrame(tick);
+    }
+
+    let audioCtx = null;
+    function playClearSound(clearedCount) {
+      try {
+        const base = Math.max(1, Math.floor(clearedCount || 1));
+        const n = Math.max(1, Math.min(24, base >= 2 ? (base - 1) * 4 : 1));
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const master = audioCtx.createGain();
+        master.gain.setValueAtTime(0.0001, now);
+        master.gain.exponentialRampToValueAtTime(1.68, now + 0.01);
+        const step = 0.075;
+        const totalDur = Math.min(0.95, 0.10 + n * step);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + totalDur);
+        master.connect(audioCtx.destination);
+        const freqs = [740.0, 880.0, 1108.73, 1320.0, 1760.0, 2217.46];
+        for (let i = 0; i < n; i++) {
+          const t0 = now + i * step;
+          const t1 = t0 + step * 0.98;
+          const f = freqs[Math.min(freqs.length - 1, i)];
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(f, t0);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(1.20, t0 + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, t1);
+          osc.connect(g);
+          g.connect(master);
+          osc.start(t0);
+          osc.stop(t1 + 0.01);
+        }
+      } catch (_) {}
+    }
+
+    let spoken30 = false;
+    let lastCountdownSpoken = null;
+    function playTimerCue(secLeft) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const playBeep = (freq, start, dur, vol) => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, start);
+          g.gain.setValueAtTime(0.0001, start);
+          g.gain.exponentialRampToValueAtTime(vol, start + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+          osc.connect(g);
+          g.connect(audioCtx.destination);
+          osc.start(start);
+          osc.stop(start + dur + 0.01);
+        };
+        if (secLeft === 30) {
+          const total = 2.5;
+          const interval = 0.33;
+          const dur = 0.16;
+          for (let t = 0; t < total; t += interval) {
+            const f = Math.floor(t / interval) % 2 === 0 ? 880 : 1174.66;
+            playBeep(f, now + t, dur, 0.16);
+          }
+          return;
+        }
+        const high = secLeft <= 3;
+        playBeep(high ? 1320 : 1046.5, now, 0.13, 0.18);
+      } catch (_) {}
+    }
+
+    function buildPrefixSum() {
+      const ps = Array.from({ length: ROWS + 1 }, () => Array(COLS + 1).fill(0));
+      for (let r = 0; r < ROWS; r++) {
+        let rowSum = 0;
+        for (let c = 0; c < COLS; c++) {
+          rowSum += grid[r][c] || 0;
+          ps[r + 1][c + 1] = ps[r][c + 1] + rowSum;
+        }
+      }
+      return ps;
+    }
+
+    function rectSum(ps, r0, c0, r1, c1) {
+      const rmin = Math.min(r0, r1);
+      const rmax = Math.max(r0, r1);
+      const cmin = Math.min(c0, c1);
+      const cmax = Math.max(c0, c1);
+      return ps[rmax + 1][cmax + 1] - ps[rmin][cmax + 1] - ps[rmax + 1][cmin] + ps[rmin][cmin];
+    }
+
+    function anyMoveExists() {
+      const ps = buildPrefixSum();
+      for (let r0 = 0; r0 < ROWS; r0++) {
+        for (let c0 = 0; c0 < COLS; c0++) {
+          for (let r1 = r0; r1 < ROWS; r1++) {
+            for (let c1 = c0; c1 < COLS; c1++) {
+              const cellCount = (r1 - r0 + 1) * (c1 - c0 + 1);
+              if (cellCount < 2) continue;
+              if (rectSum(ps, r0, c0, r1, c1) === 10) return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    function collectMoves(limit = 200) {
+      const ps = buildPrefixSum();
+      const moves = [];
+      for (let r0 = 0; r0 < ROWS; r0++) {
+        for (let c0 = 0; c0 < COLS; c0++) {
+          for (let r1 = r0; r1 < ROWS; r1++) {
+            for (let c1 = c0; c1 < COLS; c1++) {
+              const cellCount = (r1 - r0 + 1) * (c1 - c0 + 1);
+              if (cellCount < 2) continue;
+              if (rectSum(ps, r0, c0, r1, c1) === 10) {
+                moves.push({ r0, c0, r1, c1 });
+                if (moves.length >= limit) return moves;
+              }
+            }
+          }
+        }
+      }
+      return moves;
+    }
+
+    function cellsInRect(r0, c0, r1, c1) {
+      const rmin = Math.min(r0, r1);
+      const rmax = Math.max(r0, r1);
+      const cmin = Math.min(c0, c1);
+      const cmax = Math.max(c0, c1);
+      const cells = [];
+      for (let r = rmin; r <= rmax; r++) {
+        for (let c = cmin; c <= cmax; c++) {
+          cells.push([r, c]);
+        }
+      }
+      return cells;
+    }
+
+    function pathHas(r, c) {
+      return path.some(([pr, pc]) => pr === r && pc === c);
+    }
+
+    function isHighlighted(r, c) {
+      return pathHas(r, c);
+    }
+
+    function getCanvasPoint(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (clientX - rect.left) * scaleX;
+      const y = (clientY - rect.top) * scaleY;
+      return { x, y };
+    }
+
+    function hitCell(clientX, clientY) {
+      const { x, y } = getCanvasPoint(clientX, clientY);
+      if (x < PAD || y < PAD) return null;
+      const c = Math.floor((x - PAD) / CELL);
+      const r = Math.floor((y - PAD) / CELL);
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS) return [r, c];
+      return null;
+    }
+
+    function draw() {
+      ctx.fillStyle = "#bcdcff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      updateHud();
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const val = grid[r][c];
+          const inset = 0.5;
+          const x0 = PAD + c * CELL + inset;
+          const y0 = PAD + r * CELL + inset;
+          const x1 = x0 + CELL - inset * 2;
+          const y1 = y0 + CELL - inset * 2;
+          const cx = (x0 + x1) / 2;
+          const cy = (y0 + y1) / 2 + CELL * 0.05;
+          const R = (Math.min(x1 - x0, y1 - y0) / 2) * 0.96;
+
+          if (val == null) {
+            drawAppleTile(cx, cy, R, { empty: true, selected: isHighlighted(r, c) });
+            continue;
+          }
+          const sel = isHighlighted(r, c);
+          drawAppleTile(cx, cy, R, { empty: false, selected: sel });
+          ctx.font = "600 " + fontPx + "px Segoe UI, system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#fffdf7";
+          ctx.shadowColor = "rgba(49, 12, 12, 0.55)";
+          ctx.shadowBlur = 3;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 1;
+          ctx.fillText(String(val), cx, cy + R * 0.06);
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetY = 0;
+        }
+      }
+
+      if (clearPopReady && clearPopEffects.length) {
+        const now = performance.now();
+        clearPopEffects = clearPopEffects.filter((e) => e.until > now);
+        for (const e of clearPopEffects) {
+          const inset = 0.5;
+          const x0 = PAD + e.c * CELL + inset;
+          const y0 = PAD + e.r * CELL + inset;
+          const w = CELL - inset * 2;
+          const h = CELL - inset * 2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(x0, y0, w, h, 6);
+          ctx.clip();
+          const iw = clearPopImage.naturalWidth;
+          const ih = clearPopImage.naturalHeight;
+          const scale = Math.max(w / iw, h / ih);
+          const dw = iw * scale;
+          const dh = ih * scale;
+          const dx = x0 + (w - dw) / 2;
+          const dy = y0 + (h - dh) / 2;
+          ctx.drawImage(clearPopImage, dx, dy, dw, dh);
+          ctx.restore();
+        }
+      }
+
+      if (gameRunning && !gamePaused && dragging && anchor && dragCorner) {
+        const rmin = Math.min(anchor[0], dragCorner[0]);
+        const rmax = Math.max(anchor[0], dragCorner[0]);
+        const cmin = Math.min(anchor[1], dragCorner[1]);
+        const cmax = Math.max(anchor[1], dragCorner[1]);
+        const tileX = PAD + cmin * CELL + 1;
+        const tileY = PAD + rmin * CELL + 1;
+        const tileW = (cmax - cmin + 1) * CELL - 2;
+        const tileH = (rmax - rmin + 1) * CELL - 2;
+
+        let sum = 0;
+        for (let rr = rmin; rr <= rmax; rr++) {
+          for (let cc = cmin; cc <= cmax; cc++) {
+            sum += grid[rr][cc] || 0;
+          }
+        }
+
+        ctx.save();
+        if (dragStartPos && dragNowPos) {
+          const rx = Math.min(dragStartPos.x, dragNowPos.x);
+          const ry = Math.min(dragStartPos.y, dragNowPos.y);
+          const rw = Math.abs(dragNowPos.x - dragStartPos.x);
+          const rh = Math.abs(dragNowPos.y - dragStartPos.y);
+          ctx.fillStyle = "rgba(26, 74, 138, 0.08)";
+          ctx.beginPath();
+          ctx.roundRect(rx, ry, rw, rh, 10);
+          ctx.fill();
+        }
+
+        const text = String(sum);
+        const bubbleFont = "600 12px Segoe UI, system-ui, sans-serif";
+        ctx.font = bubbleFont;
+        const tw = ctx.measureText(text).width;
+        const padX = 10;
+        const bw = Math.max(30, tw + padX * 2);
+        const bh = 24;
+        let bx;
+        let by;
+        const margin = 8;
+        const upX = Math.max(6, Math.min(canvas.width - bw - 6, tileX + tileW / 2 - bw / 2));
+        const upY = tileY - (bh + margin);
+        const downX = upX;
+        const downY = tileY + tileH + margin;
+        const rightX = tileX + tileW + margin;
+        const rightY = Math.max(6, Math.min(canvas.height - bh - 6, tileY + tileH / 2 - bh / 2));
+        const leftX = tileX - bw - margin;
+        const leftY = rightY;
+
+        if (upY >= 6) {
+          bx = upX; by = upY;
+        } else if (downY + bh <= canvas.height - 6) {
+          bx = downX; by = downY;
+        } else if (rightX + bw <= canvas.width - 6) {
+          bx = rightX; by = rightY;
+        } else if (leftX >= 6) {
+          bx = leftX; by = leftY;
+        } else {
+          bx = upX; by = 6;
+        }
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+        ctx.strokeStyle = "rgba(26, 74, 138, 0.65)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, bh, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        const bubbleAbove = by + bh <= tileY;
+        if (bubbleAbove) {
+          const tx = tileX + tileW / 2;
+          const tipX = Math.max(bx + 14, Math.min(bx + bw - 14, tx));
+          const tipY = by + bh;
+          const baseY = tipY;
+          const peakY = Math.min(tileY + 2, tipY + 10);
+          ctx.beginPath();
+          ctx.moveTo(tipX - 7, baseY);
+          ctx.lineTo(tipX + 7, baseY);
+          ctx.lineTo(tipX, peakY);
+          ctx.closePath();
+          ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(26, 74, 138, 0.65)";
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = "#10233b";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, bx + bw / 2, by + bh / 2 + 0.5);
+        ctx.restore();
+      }
+
+      if (previewMode && previewRect) {
+        const rmin = Math.min(previewRect.r0, previewRect.r1);
+        const rmax = Math.max(previewRect.r0, previewRect.r1);
+        const cmin = Math.min(previewRect.c0, previewRect.c1);
+        const cmax = Math.max(previewRect.c0, previewRect.c1);
+        const x = PAD + cmin * CELL + 1;
+        const y = PAD + rmin * CELL + 1;
+        const w = (cmax - cmin + 1) * CELL - 2;
+        const h = (rmax - rmin + 1) * CELL - 2;
+        ctx.save();
+        ctx.fillStyle = "rgba(255, 190, 11, 0.20)";
+        ctx.strokeStyle = "rgba(255, 119, 0, 0.95)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 10);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function stopTimer() {
+      clearInterval(timerId);
+      timerId = null;
+    }
+
+    function startTimer() {
+      stopTimer();
+      timerId = setInterval(() => {
+        if (!gameRunning || gamePaused) return;
+        timeLeft--;
+        if (timeLeft === 30 && !spoken30) {
+          spoken30 = true;
+          playTimerCue(30);
+        }
+        if (timeLeft <= 10 && timeLeft >= 1) {
+          if (lastCountdownSpoken !== timeLeft) {
+            lastCountdownSpoken = timeLeft;
+            playTimerCue(timeLeft);
+          }
+        }
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          endGame("time");
+        }
+        draw();
+      }, 1000);
+    }
+
+    function setPause(paused) {
+      if (!gameRunning) return;
+      gamePaused = paused;
+      pauseBtn.textContent = paused ? "계속하기" : "일시정지";
+      pauseBtn.classList.toggle("paused", paused);
+      pauseBtn.setAttribute("aria-pressed", paused ? "true" : "false");
+      pauseOverlay.classList.toggle("show", paused);
+      pauseOverlay.setAttribute("aria-hidden", paused ? "false" : "true");
+      if (paused) {
+        dragging = false;
+        anchor = null;
+        dragCorner = null;
+        path = [];
+        dragStartPos = null;
+        dragNowPos = null;
+      }
+      draw();
+    }
+
+    function endGame(reason) {
+      if (!gameRunning) return;
+      gameRunning = false;
+      gamePaused = false;
+      dragging = false;
+      anchor = null;
+      dragCorner = null;
+      path = [];
+      stopTimer();
+      endedBy = reason;
+      previewMode = false;
+      previewMoves = [];
+      previewIndex = 0;
+      previewRect = null;
+      pauseOverlay.classList.remove("show");
+      pauseOverlay.setAttribute("aria-hidden", "true");
+      pauseBtn.textContent = "일시정지";
+      pauseBtn.classList.remove("paused");
+      pauseBtn.setAttribute("aria-pressed", "false");
+      canvas.classList.add("ended");
+      const diffLabel = DIFFICULTY[selectedDifficulty].label;
+      if (reason === "nomoves") {
+        overlayTitleEl.textContent = "게임 종료";
+        finalScoreEl.textContent =
+          "더이상 타일을 찾을 수 없어 게임을 종료합니다!\n\n난이도: " +
+          diffLabel +
+          "\n최종 점수: " +
+          score +
+          "점 (없앤 사과 " +
+          score +
+          "개)";
+        remainBtn.style.display = "none";
+      } else {
+        overlayTitleEl.textContent = "시간 종료";
+        finalScoreEl.textContent =
+          "난이도: " + diffLabel + "\n최종 점수: " + score + "점 (없앤 사과 " + score + "개)";
+        remainBtn.style.display = anyMoveExists() ? "inline-block" : "none";
+      }
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+      draw();
+    }
+
+    function buildFullGrid() {
+      grid = Array.from({ length: ROWS }, () =>
+        Array.from({ length: COLS }, () => rand1to9())
+      );
+    }
+
+    function startNewGame() {
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+      pauseOverlay.classList.remove("show");
+      pauseOverlay.setAttribute("aria-hidden", "true");
+      canvas.classList.remove("ended");
+      stopTimer();
+
+      resizeCanvas();
+      buildFullGrid();
+      score = 0;
+      timeLeft = GAME_SECONDS;
+      path = [];
+      anchor = null;
+      dragCorner = null;
+      dragging = false;
+      gameRunning = true;
+      gamePaused = false;
+      previewMode = false;
+      previewMoves = [];
+      previewIndex = 0;
+      previewRect = null;
+      spoken30 = false;
+      lastCountdownSpoken = null;
+      pauseBtn.textContent = "일시정지";
+      pauseBtn.classList.remove("paused");
+      pauseBtn.setAttribute("aria-pressed", "false");
+
+      startTimer();
+      draw();
+      if (!anyMoveExists()) endGame("nomoves");
+    }
+
+    function beginGameFromStart() {
+      applyDifficulty(getSelectedDifficulty());
+      GAME_SECONDS = readTimerSeconds();
+      timerInput.value = String(GAME_SECONDS);
+      showScreen("game");
+      startNewGame();
+    }
+
+    function returnToStart() {
+      stopTimer();
+      gameRunning = false;
+      gamePaused = false;
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+      pauseOverlay.classList.remove("show");
+      pauseOverlay.setAttribute("aria-hidden", "true");
+      canvas.classList.remove("ended");
+      showScreen("start");
+    }
+
+    function onPointerDown(e) {
+      if (gamePaused || !gameRunning) {
+        if (previewMode && previewMoves.length) {
+          previewIndex = (previewIndex + 1) % previewMoves.length;
+          previewRect = previewMoves[previewIndex];
+          path = [];
+          draw();
+        }
+        return;
+      }
+      const cell = hitCell(e.clientX, e.clientY);
+      if (!cell) return;
+      const [r, c] = cell;
+      const p = getCanvasPoint(e.clientX, e.clientY);
+      dragging = true;
+      anchor = [r, c];
+      dragCorner = [r, c];
+      dragStartPos = p;
+      dragNowPos = p;
+      path = cellsInRect(r, c, r, c);
+      draw();
+    }
+
+    function onPointerMove(e) {
+      if (gamePaused || !gameRunning || !dragging || !anchor) return;
+      const cell = hitCell(e.clientX, e.clientY);
+      if (!cell) return;
+      const [r, c] = cell;
+      dragCorner = [r, c];
+      dragNowPos = getCanvasPoint(e.clientX, e.clientY);
+      path = cellsInRect(anchor[0], anchor[1], r, c);
+      draw();
+    }
+
+    function onPointerUp(e) {
+      if (!dragging) return;
+      dragging = false;
+      if (gamePaused || !gameRunning) {
+        anchor = null;
+        dragCorner = null;
+        dragStartPos = null;
+        dragNowPos = null;
+        path = [];
+        draw();
+        return;
+      }
+
+      if (anchor) {
+        const end = e && typeof e.clientX === "number" ? hitCell(e.clientX, e.clientY) : null;
+        if (end) dragCorner = end;
+        if (e && typeof e.clientX === "number") dragNowPos = getCanvasPoint(e.clientX, e.clientY);
+        const [r0, c0] = anchor;
+        const [r1, c1] = dragCorner || anchor;
+        const eff = cellsInRect(r0, c0, r1, c1);
+
+        let total = 0;
+        for (const [r, c] of eff) total += grid[r][c] || 0;
+
+        if (eff.length >= 2 && total === 10) {
+          let clearedNums = 0;
+          const clearedCells = [];
+          for (const [r, c] of eff) {
+            if (grid[r][c] != null) {
+              clearedNums++;
+              clearedCells.push([r, c]);
+            }
+            grid[r][c] = null;
+          }
+          score += clearedNums;
+          if (clearedCells.length > 0) addClearPopEffects(clearedCells);
+          if (clearedNums > 0) playClearSound(clearedNums);
+          if (!anyMoveExists()) {
+            anchor = null;
+            dragCorner = null;
+            dragStartPos = null;
+            dragNowPos = null;
+            path = [];
+            draw();
+            endGame("nomoves");
+            return;
+          }
+        }
+      }
+
+      anchor = null;
+      dragCorner = null;
+      dragStartPos = null;
+      dragNowPos = null;
+      path = [];
+      draw();
+    }
+
+    startBtn.addEventListener("click", beginGameFromStart);
+
+    document.querySelectorAll(".timer-preset").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        timerInput.value = btn.dataset.seconds;
+      });
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      if (!gameRunning) return;
+      setPause(!gamePaused);
+    });
+    resumeBtn.addEventListener("click", () => setPause(false));
+    quitBtn.addEventListener("click", returnToStart);
+
+    restartBtn.addEventListener("click", () => startNewGame());
+    menuBtn.addEventListener("click", returnToStart);
+    remainBtn.addEventListener("click", () => {
+      if (endedBy !== "time") return;
+      previewMoves = collectMoves(200);
+      previewIndex = 0;
+      previewMode = previewMoves.length > 0;
+      if (previewMode) {
+        previewRect = previewMoves[previewIndex];
+        path = [];
+      } else {
+        previewRect = null;
+        path = [];
+      }
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+      canvas.classList.remove("ended");
+      draw();
+    });
+
+    window.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") {
+        if (gamePaused) {
+          setPause(false);
+          return;
+        }
+        if (previewMode && endedBy === "time") {
+          previewMode = false;
+          previewMoves = [];
+          previewIndex = 0;
+          previewRect = null;
+          path = [];
+          overlay.classList.add("show");
+          overlay.setAttribute("aria-hidden", "false");
+          canvas.classList.add("ended");
+          draw();
+        }
+      }
+    });
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointerleave", (ev) => {
+      if (dragging) onPointerUp(ev);
+    });
+
+    window.addEventListener("resize", () => {
+      if (gameScreen.classList.contains("active") && gameRunning) {
+        resizeCanvas();
+        draw();
+      }
+    });
+
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, rad) {
+        const rr = Math.min(rad, w / 2, h / 2);
+        this.moveTo(x + rr, y);
+        this.arcTo(x + w, y, x + w, y + h, rr);
+        this.arcTo(x + w, y + h, x, y + h, rr);
+        this.arcTo(x, y + h, x, y, rr);
+        this.arcTo(x, y, x + w, y, rr);
+        this.closePath();
+      };
+    }
+
+    resizeCanvas();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
