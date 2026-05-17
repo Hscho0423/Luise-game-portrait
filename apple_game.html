@@ -126,6 +126,12 @@
     }
     #start-btn:hover { filter: brightness(1.06); }
     #start-btn:active { transform: scale(0.99); }
+    .last-updated {
+      margin: 14px 0 0;
+      font-size: 0.72rem;
+      opacity: 0.55;
+      text-align: center;
+    }
 
     /* --- 게임 화면 --- */
     #game-screen {
@@ -137,7 +143,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
+      flex-wrap: nowrap;
       padding: 10px 12px;
       margin-bottom: 8px;
       background: rgba(255, 255, 255, 0.82);
@@ -164,6 +171,27 @@
       flex-shrink: 0;
     }
     #pause-btn.paused { background: #2d5016; }
+    #home-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 8px;
+      background: #ffe066;
+      color: #1a4a8a;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #home-btn.show { display: flex; }
+    #home-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+    }
+    #home-btn:hover { filter: brightness(1.05); }
     #board-wrap {
       flex: 1;
       display: flex;
@@ -294,10 +322,16 @@
       </div>
     </div>
     <button type="button" id="start-btn">시작하기</button>
+    <p class="last-updated" id="last-updated"></p>
   </section>
 
   <section id="game-screen" class="screen" aria-label="게임 화면" hidden>
     <header id="game-hud">
+      <button type="button" id="home-btn" hidden aria-label="시작 화면으로">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3 3 11h2v9h5v-6h4v6h5v-9h2L12 3z"/>
+        </svg>
+      </button>
       <p class="hud-stat" id="hud-time"><span>남은 시간</span> <strong>—</strong></p>
       <p class="hud-stat" id="hud-score"><span>점수</span> <strong>0</strong></p>
       <button type="button" id="pause-btn" aria-pressed="false">일시정지</button>
@@ -332,6 +366,50 @@
   </div>
 
   <script>
+    const LAST_UPDATED = "2026-05-15";
+
+    const WIN_OUTCOMES = [
+      {
+        img: "./luise-happy.png",
+        alt: "행복해하는 루이",
+        message: "축하합니다! 모든 퍼즐을 풀었습니다. 루이가 행복해합니다!",
+      },
+      {
+        img: "./luise-win-smile.png",
+        alt: "활짝 웃는 루이",
+        message: "축하합니다! 모든 퍼즐을 풀었습니다. 루이가 활짝 웃게되었습니다!",
+      },
+      {
+        img: "./luise-win-wave.png",
+        alt: "손을 흔드는 루이",
+        message: "축하합니다! 모든 퍼즐을 풀었습니다. 루이가 당신에게 반갑게 손을 흔들어줍니다!",
+      },
+    ];
+
+    const FAIL_OUTCOMES = [
+      {
+        img: "./luise-messy.png",
+        alt: "꼬질꼬질해진 루이",
+        message:
+          "당신은 제한시간내에 퍼즐을 풀지 못했습니다.. 루이가 다시 꼬질꼬질한 모습이 되었습니다",
+      },
+      {
+        img: "./luise-fail-jail.png",
+        alt: "징벌방에 갇힌 루이",
+        message: "당신은 제한시간내에 퍼즐을 풀지 못했습니다.. 루이가 징벌방에 갇혔습니다",
+      },
+      {
+        img: "./luise-fail-lying.png",
+        alt: "몸져 누운 루이",
+        message: "당신은 제한시간내에 퍼즐을 풀지 못했습니다.. 루이가 몸져 누웠습니다",
+      },
+      {
+        img: "./luise-fail-sleep.png",
+        alt: "잠든 루이",
+        message: "당신은 제한시간내에 퍼즐을 풀지 못했습니다.. 루이가 크게 실망하며 잠에 듭니다",
+      },
+    ];
+
     const DIFFICULTY = {
       easy: { cols: 6, rows: 12, label: "쉬움", clusterFill: 0.38 },
       normal: { cols: 7, rows: 14, label: "보통", clusterFill: 0.22 },
@@ -354,6 +432,8 @@
     const hudTimeEl = document.getElementById("hud-time");
     const hudScoreEl = document.getElementById("hud-score");
     const pauseBtn = document.getElementById("pause-btn");
+    const homeBtn = document.getElementById("home-btn");
+    const lastUpdatedEl = document.getElementById("last-updated");
     const pauseOverlay = document.getElementById("pause-overlay");
     const resumeBtn = document.getElementById("resume-btn");
     const quitBtn = document.getElementById("quit-btn");
@@ -424,6 +504,18 @@
       startScreen.hidden = !isStart;
       gameScreen.classList.toggle("active", !isStart);
       gameScreen.hidden = isStart;
+    }
+
+    function formatLastUpdated(isoDate) {
+      const [y, m, d] = isoDate.split("-").map(Number);
+      return y + "년 " + m + "월 " + d + "일";
+    }
+
+    function updatePreviewHud() {
+      const showHome = previewMode && endedBy === "time";
+      homeBtn.classList.toggle("show", showHome);
+      homeBtn.hidden = !showHome;
+      pauseBtn.hidden = showHome;
     }
 
     function updateHud() {
@@ -760,15 +852,14 @@
       overlayLuiseImg.alt = "";
     }
 
-    function showOverlayLuise(type) {
+    function pickRandomOutcome(outcomes) {
+      return outcomes[Math.floor(Math.random() * outcomes.length)];
+    }
+
+    function showOverlayOutcome(outcome, type) {
       overlayBox.classList.add("show-luise", type);
-      if (type === "win") {
-        overlayLuiseImg.src = "./luise-happy.png";
-        overlayLuiseImg.alt = "행복해하는 루이";
-      } else {
-        overlayLuiseImg.src = "./luise-messy.png";
-        overlayLuiseImg.alt = "꼬질꼬질해진 루이";
-      }
+      overlayLuiseImg.src = outcome.img;
+      overlayLuiseImg.alt = outcome.alt;
     }
 
     function anyMoveExists() {
@@ -1097,19 +1188,19 @@
         "\n\n난이도: " + diffLabel + "\n최종 점수: " + score + "점 (없앤 사과 " + score + "개)";
 
       if (reason === "nomoves") {
+        const outcome = pickRandomOutcome(WIN_OUTCOMES);
         overlayTitleEl.textContent = "퍼즐 클리어!";
-        finalScoreEl.textContent =
-          "축하합니다! 모든 퍼즐을 풀었습니다. 루이가 행복해합니다!" + scoreLine;
-        showOverlayLuise("win");
+        finalScoreEl.textContent = outcome.message + scoreLine;
+        showOverlayOutcome(outcome, "win");
         remainBtn.style.display = "none";
       } else if (reason === "time") {
+        const outcome = pickRandomOutcome(FAIL_OUTCOMES);
         overlayTitleEl.textContent = "시간 종료";
-        finalScoreEl.textContent =
-          "당신을 제한시간내에 퍼즐을 풀지 못했습니다.. 루이가 다시 꼬질꼬질한 모습이 되었습니다" +
-          scoreLine;
-        showOverlayLuise("fail");
+        finalScoreEl.textContent = outcome.message + scoreLine;
+        showOverlayOutcome(outcome, "fail");
         remainBtn.style.display = anyMoveExists() ? "inline-block" : "none";
       }
+      updatePreviewHud();
       overlay.classList.add("show");
       overlay.setAttribute("aria-hidden", "false");
       draw();
@@ -1157,6 +1248,8 @@
       pauseBtn.textContent = "일시정지";
       pauseBtn.classList.remove("paused");
       pauseBtn.setAttribute("aria-pressed", "false");
+      pauseBtn.hidden = false;
+      updatePreviewHud();
 
       startTimer();
       draw();
@@ -1175,11 +1268,19 @@
       stopTimer();
       gameRunning = false;
       gamePaused = false;
+      previewMode = false;
+      previewMoves = [];
+      previewIndex = 0;
+      previewRect = null;
+      endedBy = null;
+      path = [];
       overlay.classList.remove("show");
       overlay.setAttribute("aria-hidden", "true");
+      resetOverlayPresentation();
       pauseOverlay.classList.remove("show");
       pauseOverlay.setAttribute("aria-hidden", "true");
       canvas.classList.remove("ended");
+      updatePreviewHud();
       showScreen("start");
     }
 
@@ -1277,7 +1378,9 @@
 
     startBtn.addEventListener("click", beginGameFromStart);
 
+    lastUpdatedEl.textContent = "최종 수정일: " + formatLastUpdated(LAST_UPDATED);
     initTimerSelect();
+    updatePreviewHud();
 
     pauseBtn.addEventListener("click", () => {
       if (!gameRunning) return;
@@ -1303,8 +1406,11 @@
       overlay.classList.remove("show");
       overlay.setAttribute("aria-hidden", "true");
       canvas.classList.remove("ended");
+      updatePreviewHud();
       draw();
     });
+
+    homeBtn.addEventListener("click", returnToStart);
 
     window.addEventListener("keydown", (ev) => {
       if (ev.key === "Escape") {
@@ -1321,6 +1427,7 @@
           overlay.classList.add("show");
           overlay.setAttribute("aria-hidden", "false");
           canvas.classList.add("ended");
+          updatePreviewHud();
           draw();
         }
       }
