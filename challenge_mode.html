@@ -96,6 +96,133 @@
       touch-action: manipulation;
     }
     #ch-home-btn svg { width: 24px; height: 24px; fill: currentColor; }
+    #ch-bonus-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      min-width: 44px;
+      height: 44px;
+      padding: 2px 8px;
+      border: none;
+      border-radius: 10px;
+      background: #ff6b6b;
+      color: #fff;
+      cursor: pointer;
+      flex-shrink: 0;
+      touch-action: manipulation;
+      font: inherit;
+    }
+    #ch-bonus-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: #c9c9c9;
+      color: #666;
+    }
+    #ch-bonus-btn .ch-bonus-label {
+      font-size: 0.58rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    #ch-bonus-btn strong {
+      font-size: 0.95rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+    #ch-toast {
+      display: none;
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, -50%);
+      z-index: 12;
+      padding: 14px 22px;
+      border-radius: 12px;
+      background: rgba(26, 74, 138, 0.92);
+      color: #fff;
+      font-size: clamp(1rem, 4.5vw, 1.2rem);
+      font-weight: 800;
+      text-align: center;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #ch-toast.show {
+      display: block;
+      animation: ch-toast-pop 0.25s ease-out;
+    }
+    @keyframes ch-toast-pop {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.88); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    #ch-roulette {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 14;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+    }
+    #ch-roulette.show {
+      display: flex;
+    }
+    .ch-roulette-box {
+      background: #fff;
+      border: 3px solid #ffe066;
+      border-radius: 16px;
+      padding: 20px 28px 24px;
+      text-align: center;
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.28);
+      min-width: min(88vw, 220px);
+    }
+    .ch-roulette-title {
+      margin: 0 0 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1a4a8a;
+      letter-spacing: 0.04em;
+    }
+    .ch-roulette-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 72px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #f0f6ff 0%, #d4e6ff 100%);
+      border: 2px solid rgba(26, 74, 138, 0.2);
+      overflow: hidden;
+    }
+    #ch-roulette-num {
+      font-size: clamp(2.4rem, 12vw, 3.2rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #ff6b6b;
+      line-height: 1;
+      transition: transform 0.08s ease-out;
+    }
+    #ch-roulette.spinning #ch-roulette-num {
+      animation: ch-roulette-tick 0.1s ease-out;
+    }
+    #ch-roulette.landed #ch-roulette-num {
+      animation: ch-roulette-land 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+      color: #1a4a8a;
+    }
+    @keyframes ch-roulette-tick {
+      0% { transform: translateY(-6px); opacity: 0.5; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes ch-roulette-land {
+      0% { transform: scale(1.35); }
+      70% { transform: scale(0.92); }
+      100% { transform: scale(1); }
+    }
+    #ch-board-wrap.bomb-picking #ch-board {
+      cursor: crosshair;
+    }
     @media (max-width: 360px) {
       #ch-hud {
         gap: 6px;
@@ -167,12 +294,25 @@
         <div class="ch-hud-divider" aria-hidden="true"></div>
         <p class="ch-stat"><span>최고</span><strong id="ch-high">0</strong></p>
       </div>
+      <button type="button" id="ch-bonus-btn" disabled aria-label="보너스 사용">
+        <span class="ch-bonus-label">보너스</span>
+        <strong id="ch-bonus-count">0</strong>
+      </button>
       <button type="button" id="ch-home-btn" aria-label="홈 화면">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 11h2v9h5v-6h4v6h5v-9h2L12 3z"/></svg>
       </button>
     </header>
     <div id="ch-board-wrap">
       <canvas id="ch-board"></canvas>
+      <div id="ch-toast" role="status" aria-live="polite"></div>
+      <div id="ch-roulette" aria-hidden="true">
+        <div class="ch-roulette-box">
+          <p class="ch-roulette-title">보너스 룰렛</p>
+          <div class="ch-roulette-slot">
+            <span id="ch-roulette-num">1</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -191,6 +331,9 @@
     const GUIDED_BREAK_LIMIT = 30;
     const HIGH_SCORE_KEY = "luise-challenge-highscore";
     const START_EMPTY_COLS = [3, 4];
+    const BONUS_SCORE_STEP = 1000;
+    const BOMB_TOAST_MS = 1500;
+    const CLEAR_POP_SRC = "./clear-pop.png";
 
     const MIN_DRAG_MERGE_PX = 14;
 
@@ -199,6 +342,11 @@
     const wrap = document.getElementById("ch-board-wrap");
     const scoreEl = document.getElementById("ch-score");
     const highEl = document.getElementById("ch-high");
+    const bonusBtn = document.getElementById("ch-bonus-btn");
+    const bonusCountEl = document.getElementById("ch-bonus-count");
+    const toastEl = document.getElementById("ch-toast");
+    const rouletteEl = document.getElementById("ch-roulette");
+    const rouletteNumEl = document.getElementById("ch-roulette-num");
     const overlay = document.getElementById("ch-overlay");
     const endMsgEl = document.getElementById("ch-end-msg");
     const endHomeBtn = document.getElementById("ch-end-home");
@@ -216,6 +364,119 @@
     let gameRunning = false;
     let drag = null;
     let popEffects = [];
+    let bonusCredits = 0;
+    let bonusMilestonesGranted = 0;
+    let bombPhase = "idle";
+    let bombPicksLeft = 0;
+    let bombToastTimer = null;
+    let rouletteStepTimer = null;
+    const clearPopImage = new Image();
+    let clearPopReady = false;
+    clearPopImage.addEventListener("load", () => {
+      clearPopReady = true;
+      draw();
+    });
+    clearPopImage.src = CLEAR_POP_SRC;
+
+    let audioCtx = null;
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playTone(freq, when, dur, vol, wave) {
+      const ctx = ensureAudio();
+      const t0 = when == null ? ctx.currentTime : when;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = wave || "sine";
+      osc.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    }
+
+    function playRouletteTickSound(step, totalSpins) {
+      try {
+        const progress = Math.min(1, step / Math.max(1, totalSpins));
+        const freq = 440 + progress * 640;
+        playTone(freq, null, 0.04, 0.1, "square");
+      } catch (_) {}
+    }
+
+    function playRouletteLandSound(result) {
+      try {
+        const ctx = ensureAudio();
+        const now = ctx.currentTime;
+        const notes = [659.25, 830.61, 987.77, 1174.66];
+        notes.forEach((f, i) => {
+          playTone(f, now + i * 0.075, 0.11, 0.2, "triangle");
+        });
+        const peak = [1046.5, 1174.66, 1318.51, 1567.98, 1760][result - 1] || 1318.51;
+        playTone(peak, now + 0.32, 0.22, 0.28, "triangle");
+        playTone(peak * 1.25, now + 0.38, 0.14, 0.14, "sine");
+      } catch (_) {}
+    }
+
+    function playBombSound() {
+      try {
+        const ctx = ensureAudio();
+        const now = ctx.currentTime;
+        const boom = ctx.createOscillator();
+        const boomGain = ctx.createGain();
+        boom.type = "sawtooth";
+        boom.frequency.setValueAtTime(280, now);
+        boom.frequency.exponentialRampToValueAtTime(48, now + 0.14);
+        boomGain.gain.setValueAtTime(0.0001, now);
+        boomGain.gain.exponentialRampToValueAtTime(0.32, now + 0.01);
+        boomGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+        boom.connect(boomGain);
+        boomGain.connect(ctx.destination);
+        boom.start(now);
+        boom.stop(now + 0.28);
+
+        playTone(520, now, 0.035, 0.18, "square");
+        playTone(130, now + 0.03, 0.12, 0.14, "triangle");
+      } catch (_) {}
+    }
+
+    function playClearSound(clearedCount) {
+      try {
+        const base = Math.max(1, Math.floor(clearedCount || 1));
+        const n = Math.max(1, Math.min(24, base >= 2 ? (base - 1) * 4 : 1));
+        const now = ensureAudio().currentTime;
+        const master = audioCtx.createGain();
+        master.gain.setValueAtTime(0.0001, now);
+        master.gain.exponentialRampToValueAtTime(1.68, now + 0.01);
+        const step = 0.075;
+        const totalDur = Math.min(0.95, 0.10 + n * step);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + totalDur);
+        master.connect(audioCtx.destination);
+        const freqs = [740.0, 880.0, 1108.73, 1320.0, 1760.0, 2217.46];
+        for (let i = 0; i < n; i++) {
+          const t0 = now + i * step;
+          const t1 = t0 + step * 0.98;
+          const f = freqs[Math.min(freqs.length - 1, i)];
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(f, t0);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(1.20, t0 + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, t1);
+          osc.connect(g);
+          g.connect(master);
+          osc.start(t0);
+          osc.stop(t1 + 0.01);
+        }
+      } catch (_) {}
+    }
 
     function key(c, r) {
       return c + "," + r;
@@ -323,6 +584,28 @@
       const x = hexSize * (Math.sqrt(3) * (col + 0.5 * (row & 1)));
       const y = hexSize * (1.5 * (row - topRow));
       return { x: originX + x, y: originY + y };
+    }
+
+    function pixelToHexAny(px, py) {
+      let best = null;
+      let bestD = Infinity;
+      const topRow = getViewTopRow();
+      for (let r = topRow; r <= viewBottomRow; r++) {
+        for (let c = 0; c < HEX_COLS; c++) {
+          const cell = getCell(c, r);
+          if (!cell || cell.state === "empty") continue;
+          const { x, y } = hexCenter(c, r);
+          const dx = px - x;
+          const dy = py - y;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) {
+            bestD = d;
+            best = [c, r];
+          }
+        }
+      }
+      if (!best || bestD > hexSize * hexSize * 1.35) return null;
+      return best;
     }
 
     function pixelToHex(px, py, onlyRevealed, skipC, skipR) {
@@ -692,6 +975,120 @@
       return list;
     }
 
+    function updateBonusButton() {
+      bonusCountEl.textContent = String(bonusCredits);
+      bonusBtn.disabled =
+        !gameRunning || bonusCredits < 1 || bombPhase !== "idle";
+    }
+
+    function grantBonusMilestones() {
+      const milestone = Math.floor(score / BONUS_SCORE_STEP);
+      while (bonusMilestonesGranted < milestone) {
+        bonusMilestonesGranted++;
+        bonusCredits++;
+      }
+      updateBonusButton();
+    }
+
+    function showBombToast(text) {
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+    }
+
+    function hideBombToast() {
+      toastEl.classList.remove("show");
+    }
+
+    function cancelRoulette() {
+      if (rouletteStepTimer) {
+        clearTimeout(rouletteStepTimer);
+        rouletteStepTimer = null;
+      }
+      rouletteEl.classList.remove("show", "spinning", "landed");
+      rouletteEl.setAttribute("aria-hidden", "true");
+    }
+
+    function runBombRoulette(finalN, onComplete) {
+      cancelRoulette();
+      setBombPhase("roulette");
+      rouletteEl.classList.add("show", "spinning");
+      rouletteEl.classList.remove("landed");
+      rouletteEl.setAttribute("aria-hidden", "false");
+      rouletteNumEl.textContent = "1";
+
+      const spins = 18 + Math.floor(Math.random() * 10);
+      let step = 0;
+
+      function tick() {
+        if (step >= spins) {
+          playRouletteLandSound(finalN);
+          rouletteEl.classList.remove("spinning");
+          rouletteEl.classList.add("landed");
+          rouletteNumEl.textContent = String(finalN);
+          rouletteStepTimer = setTimeout(() => {
+            rouletteStepTimer = null;
+            cancelRoulette();
+            onComplete();
+          }, 500);
+          return;
+        }
+        playRouletteTickSound(step, spins);
+        rouletteNumEl.textContent = String(1 + (step % 5));
+        void rouletteNumEl.offsetWidth;
+        rouletteEl.classList.remove("spinning");
+        rouletteEl.classList.add("spinning");
+        step++;
+        const progress = step / spins;
+        const delay = Math.round(50 + progress * progress * 200);
+        rouletteStepTimer = setTimeout(tick, delay);
+      }
+
+      tick();
+    }
+
+    function setBombPhase(phase) {
+      bombPhase = phase;
+      wrap.classList.toggle("bomb-picking", phase === "picking");
+      updateBonusButton();
+    }
+
+    function activateBonus() {
+      if (!gameRunning || bonusCredits < 1 || bombPhase !== "idle") return;
+      try {
+        ensureAudio();
+      } catch (_) {}
+      bonusCredits--;
+      updateBonusButton();
+      const n = 1 + Math.floor(Math.random() * 5);
+      bombPicksLeft = n;
+      runBombRoulette(n, () => {
+        setBombPhase("announcing");
+        showBombToast("폭탄 " + n + "개 획득!");
+        if (bombToastTimer) clearTimeout(bombToastTimer);
+        bombToastTimer = setTimeout(() => {
+          bombToastTimer = null;
+          hideBombToast();
+          setBombPhase("picking");
+          draw();
+        }, BOMB_TOAST_MS);
+      });
+    }
+
+    function applyBombAt(c, r) {
+      const cell = getCell(c, r);
+      if (!cell || cell.state === "empty") return false;
+      playBombSound();
+      setCell(c, r, makeEmpty());
+      bombPicksLeft--;
+      popEffects.push({ c, r, until: performance.now() + 280 });
+      syncViewport();
+      scheduleLayout();
+      if (bombPicksLeft <= 0) setBombPhase("idle");
+      else draw();
+      checkGameEnd();
+      return true;
+    }
+
     function addScore(n) {
       score += n * SCORE_PER_TILE;
       scoreEl.textContent = String(score);
@@ -702,6 +1099,7 @@
           localStorage.setItem(HIGH_SCORE_KEY, String(highScore));
         } catch (_) {}
       }
+      grantBonusMilestones();
     }
 
     function breakNeighborsOf(pairCells) {
@@ -737,7 +1135,19 @@
       setCell(c, r, makeEmpty());
     }
 
+    function hasHiddenInView() {
+      const topRow = getViewTopRow();
+      for (let r = topRow; r <= viewBottomRow; r++) {
+        for (let c = 0; c < HEX_COLS; c++) {
+          const cell = getCell(c, r);
+          if (cell && cell.state === "hidden") return true;
+        }
+      }
+      return false;
+    }
+
     function shouldEndGame() {
+      if (!hasHiddenInView()) return true;
       if (revealedTileCount() < 2) return true;
       return !hasMergeMove();
     }
@@ -755,14 +1165,15 @@
         [fromC, fromR],
         [toC, toR],
       ];
-      breakNeighborsOf(pairCells);
+      const broken = breakNeighborsOf(pairCells);
+      playClearSound(2 + broken);
       collapseMergedCell(fromC, fromR);
       collapseMergedCell(toC, toR);
       syncViewport();
       scheduleLayout();
     }
 
-    function drawHex(cx, cy, fillStyle, strokeStyle, lineW) {
+    function pathHexAt(cx, cy) {
       const s = hexSize * 0.92;
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
@@ -773,6 +1184,10 @@
         else ctx.lineTo(hx, hy);
       }
       ctx.closePath();
+    }
+
+    function drawHex(cx, cy, fillStyle, strokeStyle, lineW) {
+      pathHexAt(cx, cy);
       ctx.fillStyle = fillStyle;
       ctx.fill();
       ctx.strokeStyle = strokeStyle;
@@ -780,14 +1195,40 @@
       ctx.stroke();
     }
 
+    function drawClearPopHex(cx, cy) {
+      if (!clearPopReady) return false;
+      const s = hexSize * 0.92;
+      const w = Math.sqrt(3) * s;
+      const h = 2 * s;
+      const iw = clearPopImage.naturalWidth;
+      const ih = clearPopImage.naturalHeight;
+      if (!iw || !ih) return false;
+      ctx.save();
+      pathHexAt(cx, cy);
+      ctx.clip();
+      const scale = Math.max(w / iw, h / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      ctx.drawImage(clearPopImage, cx - dw / 2, cy - dh / 2, dw, dh);
+      ctx.restore();
+      return true;
+    }
+
     function drawRevealedNumber(cx, cy, val, alpha) {
       ctx.save();
       ctx.globalAlpha = alpha == null ? 1 : alpha;
-      drawHex(cx, cy, "#bcdcff", "rgba(26, 74, 138, 0.2)", 1);
-      ctx.font = "700 " + Math.max(13, Math.round(hexSize * 0.58)) + "px system-ui,sans-serif";
+      pathHexAt(cx, cy);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      const fs = Math.max(13, Math.round(hexSize * 0.58));
+      ctx.font = "700 " + fs + "px system-ui,sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#1a4a8a";
+      ctx.lineWidth = Math.max(2, fs * 0.14);
+      ctx.strokeStyle = "rgba(26, 74, 138, 0.85)";
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeText(String(val), cx, cy);
       ctx.fillText(String(val), cx, cy);
       ctx.restore();
     }
@@ -828,18 +1269,38 @@
         for (let c = 0; c < HEX_COLS; c++) {
           let cell = getCell(c, r);
           if (!cell) continue;
-          if (cell.state === "empty") continue;
 
           const { x, y } = hexCenter(c, r);
           const val = getRevealedValue(c, r);
           const isDragSource =
             drag && drag.fromC === c && drag.fromR === r && drag.active;
 
+          if (cell.state === "empty") {
+            drawHex(x, y, "#bcdcff", "rgba(26,74,138,0.15)", 1);
+            continue;
+          }
+
+          if (cell.state === "revealed") {
+            drawHex(x, y, "#bcdcff", "rgba(26, 74, 138, 0.2)", 1);
+          }
+
           if (cell.state === "hidden") {
-            drawHex(x, y, "#ffffff", "rgba(26,74,138,0.2)", 1.2);
+            if (!drawClearPopHex(x, y)) {
+              drawHex(x, y, "#ffffff", "rgba(26,74,138,0.2)", 1.2);
+            } else {
+              pathHexAt(x, y);
+              ctx.strokeStyle = "rgba(26,74,138,0.2)";
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+            }
+          }
+
+          if (bombPhase === "picking" && cell.state !== "empty") {
+            drawHex(x, y, "rgba(255, 107, 107, 0.22)", "#ff6b6b", 2);
           }
 
           const canMergeHere =
+            bombPhase === "idle" &&
             drag &&
             drag.active &&
             !isDragSource &&
@@ -871,10 +1332,27 @@
       }
 
       popEffects = popEffects.filter((e) => e.until > performance.now());
+
+      if (bombPhase === "picking" && bombPicksLeft > 0) {
+        ctx.save();
+        ctx.font = "700 15px system-ui,sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "rgba(26, 74, 138, 0.9)";
+        ctx.fillText("남은 폭탄 " + bombPicksLeft + "개 — 타일을 탭하세요", w / 2, 10);
+        ctx.restore();
+      }
     }
 
     function endGame() {
-      if (hasMergeMove()) return;
+      if (!shouldEndGame()) return;
+      if (bombToastTimer) {
+        clearTimeout(bombToastTimer);
+        bombToastTimer = null;
+      }
+      cancelRoulette();
+      hideBombToast();
+      setBombPhase("idle");
       gameRunning = false;
       endMsgEl.textContent =
         "축하합니다 " + score + "점수를 획득하였습니다.";
@@ -886,12 +1364,23 @@
       score = 0;
       mergeCount = 0;
       tilesBroken = 0;
+      bonusCredits = 0;
+      bonusMilestonesGranted = 0;
+      bombPicksLeft = 0;
+      if (bombToastTimer) {
+        clearTimeout(bombToastTimer);
+        bombToastTimer = null;
+      }
+      cancelRoulette();
+      hideBombToast();
+      setBombPhase("idle");
       scoreEl.textContent = "0";
       popEffects = [];
       fillInitialBoard();
       gameRunning = true;
       overlay.classList.remove("show");
       overlay.setAttribute("aria-hidden", "true");
+      updateBonusButton();
       syncViewport();
       scheduleLayout();
     }
@@ -908,6 +1397,15 @@
       if (!gameRunning) return;
       e.preventDefault();
       const { px, py } = pointerPos(e);
+
+      if (bombPhase === "announcing" || bombPhase === "roulette") return;
+
+      if (bombPhase === "picking") {
+        const hit = pixelToHexAny(px, py);
+        if (hit) applyBombAt(hit[0], hit[1]);
+        return;
+      }
+
       const hit = pixelToHex(px, py, true);
       if (!hit) return;
       const [c, r] = hit;
@@ -933,6 +1431,7 @@
     }
 
     function onPointerMove(e) {
+      if (bombPhase !== "idle") return;
       if (!drag || !drag.active) return;
       const { px, py } = pointerPos(e);
       drag.x = px;
@@ -955,6 +1454,7 @@
     let dragEnding = false;
 
     function finishDrag(e) {
+      if (bombPhase !== "idle") return;
       if (!drag || !drag.active || dragEnding) return;
       dragEnding = true;
       canvas.classList.remove("dragging");
@@ -1018,6 +1518,10 @@
       highScore = parseInt(localStorage.getItem(HIGH_SCORE_KEY) || "0", 10) || 0;
     } catch (_) {}
     highEl.textContent = String(highScore);
+
+    bonusBtn.addEventListener("click", () => {
+      activateBonus();
+    });
 
     document.getElementById("ch-home-btn").addEventListener("click", () => {
       location.href = "./apple_game.html";
