@@ -396,13 +396,30 @@
       return nearestMergeableAt(fromC, fromR, releaseX, releaseY);
     }
 
+    function pushRowAbove() {
+      minRow--;
+      for (let c = 0; c < HEX_COLS; c++) {
+        setCell(c, minRow, makeHidden(randValue()));
+      }
+    }
+
+    function deleteRow(r) {
+      for (let c = 0; c < HEX_COLS; c++) {
+        grid.delete(key(c, r));
+      }
+    }
+
+    function rowHasPlayableCell(r) {
+      for (let c = 0; c < HEX_COLS; c++) {
+        const cell = getCell(c, r);
+        if (cell && cell.state !== "empty") return true;
+      }
+      return false;
+    }
+
     function ensureRowExists(r) {
-      if (r > viewBottomRow) return false;
       while (minRow > r) {
-        minRow--;
-        for (let cc = 0; cc < HEX_COLS; cc++) {
-          if (!getCell(cc, minRow)) setCell(cc, minRow, makeHidden(randValue()));
-        }
+        pushRowAbove();
       }
       return true;
     }
@@ -557,13 +574,13 @@
       return values;
     }
 
+    const ROWS_BUFFER_ABOVE = 4;
+
     function ensureRowsAbove() {
-      const topNeeded = viewBottomRow - VISIBLE_ROWS + 1;
-      while (minRow > topNeeded) {
-        minRow--;
-        for (let c = 0; c < HEX_COLS; c++) {
-          setCell(c, minRow, makeHidden(randValue()));
-        }
+      const topRow = getViewTopRow();
+      const wantMin = topRow - ROWS_BUFFER_ABOVE;
+      while (minRow > wantMin) {
+        pushRowAbove();
       }
     }
 
@@ -628,11 +645,36 @@
       }
     }
 
+    function trimBottomEmptyRows() {
+      while (viewBottomRow > minRow && !rowHasPlayableCell(viewBottomRow)) {
+        deleteRow(viewBottomRow);
+        viewBottomRow--;
+      }
+    }
+
     function syncViewport() {
-      const maxR = getMaxOccupiedRow();
-      viewBottomRow = Math.max(maxR, VISIBLE_ROWS - 1);
+      const prevBottom = viewBottomRow;
+      trimBottomEmptyRows();
+      let maxR = getMaxOccupiedRow();
+      if (maxR === -Infinity) maxR = minRow;
+      viewBottomRow = maxR;
       pruneRowsBelow(viewBottomRow);
+      const dropped = Math.max(0, prevBottom - viewBottomRow);
+      for (let i = 0; i < dropped; i++) {
+        pushRowAbove();
+      }
       ensureRowsAbove();
+    }
+
+    function scheduleLayout() {
+      requestAnimationFrame(() => {
+        resize();
+        draw();
+        requestAnimationFrame(() => {
+          resize();
+          draw();
+        });
+      });
     }
 
     function uniqueNeighborCells(cells) {
@@ -667,8 +709,8 @@
       const toReveal = [];
       for (const [c, r] of adj) {
         if (pairCells.some(([pc, pr]) => pc === c && pr === r)) continue;
-        if (c < 0 || c >= HEX_COLS || r > viewBottomRow) continue;
-        if (!ensureRowExists(r)) continue;
+        if (c < 0 || c >= HEX_COLS) continue;
+        ensureRowExists(r);
         let cell = getCell(c, r);
         if (!cell) {
           cell = makeHidden(randValue());
@@ -717,16 +759,7 @@
       collapseMergedCell(fromC, fromR);
       collapseMergedCell(toC, toR);
       syncViewport();
-      resize();
-    }
-
-    function rowIsFullyEmpty(r) {
-      for (let c = 0; c < HEX_COLS; c++) {
-        const cell = getCell(c, r);
-        if (!cell || cell.state === "empty") continue;
-        return false;
-      }
-      return true;
+      scheduleLayout();
     }
 
     function drawHex(cx, cy, fillStyle, strokeStyle, lineW) {
@@ -761,8 +794,13 @@
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
-      const w = wrap.clientWidth;
-      const h = wrap.clientHeight;
+      let w = wrap.clientWidth;
+      let h = wrap.clientHeight;
+      if (w < 1) w = window.innerWidth;
+      if (h < 1) {
+        const hud = document.getElementById("ch-hud");
+        h = window.innerHeight - (hud ? hud.offsetHeight : 48);
+      }
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       canvas.style.width = w + "px";
@@ -855,8 +893,7 @@
       overlay.classList.remove("show");
       overlay.setAttribute("aria-hidden", "true");
       syncViewport();
-      resize();
-      draw();
+      scheduleLayout();
     }
 
     function pointerPos(e) {
@@ -965,8 +1002,7 @@
         draw();
         setTimeout(() => {
           syncViewport();
-          resize();
-          draw();
+          scheduleLayout();
           checkGameEnd();
         }, 320);
       } else {
@@ -994,10 +1030,16 @@
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", onPointerUp);
-    window.addEventListener("resize", () => {
-      resize();
-      draw();
-    });
+    function onLayoutChange() {
+      scheduleLayout();
+    }
+
+    window.addEventListener("resize", onLayoutChange);
+    window.addEventListener("orientationchange", onLayoutChange);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", onLayoutChange);
+      window.visualViewport.addEventListener("scroll", onLayoutChange);
+    }
 
     startGame();
     requestAnimationFrame(() => {
