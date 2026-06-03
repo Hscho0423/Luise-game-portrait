@@ -96,6 +96,29 @@
       touch-action: manipulation;
     }
     #ch-home-btn svg { width: 24px; height: 24px; fill: currentColor; }
+    .ch-bonus-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    #ch-bonus-info-btn {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 1.5px solid rgba(26, 74, 138, 0.35);
+      border-radius: 50%;
+      background: #fff;
+      color: #1a4a8a;
+      font-size: 0.72rem;
+      font-weight: 800;
+      font-style: italic;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1;
+      cursor: pointer;
+      touch-action: manipulation;
+      flex-shrink: 0;
+    }
     #ch-bonus-btn {
       display: flex;
       flex-direction: column;
@@ -130,6 +153,92 @@
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       line-height: 1.1;
+    }
+    #ch-bonus-btn.rescue-highlight {
+      animation: ch-bonus-pulse 0.9s ease-in-out infinite;
+      box-shadow: 0 0 0 3px #ffe066, 0 0 16px rgba(255, 224, 102, 0.75);
+      transform-origin: center;
+    }
+    @keyframes ch-bonus-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    #ch-board-wrap.bonus-rescue #ch-board {
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+    #ch-bonus-info-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.45);
+    }
+    #ch-bonus-info-modal.show {
+      display: flex;
+    }
+    .ch-bonus-info-box {
+      width: min(92vw, 320px);
+      max-height: 85vh;
+      overflow: auto;
+      background: #fff;
+      border: 2px solid #ffe066;
+      border-radius: 14px;
+      padding: 18px 16px 14px;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+    }
+    .ch-bonus-info-box h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      color: #1a4a8a;
+      text-align: center;
+    }
+    .ch-bonus-info-box p {
+      margin: 0 0 12px;
+      font-size: 0.78rem;
+      color: #555;
+      text-align: center;
+      line-height: 1.45;
+    }
+    .ch-bonus-odds-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .ch-bonus-odds-table th,
+    .ch-bonus-odds-table td {
+      padding: 7px 8px;
+      border-bottom: 1px solid rgba(26, 74, 138, 0.12);
+      text-align: center;
+    }
+    .ch-bonus-odds-table th {
+      font-size: 0.72rem;
+      color: #666;
+      font-weight: 700;
+    }
+    .ch-bonus-odds-table tr:last-child td {
+      border-bottom: none;
+    }
+    .ch-bonus-odds-table .jackpot-row td {
+      color: #c45a00;
+      font-weight: 800;
+    }
+    .ch-bonus-info-close {
+      display: block;
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #ffe066;
+      color: #1a1a1a;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
     }
     #ch-toast {
       display: none;
@@ -210,6 +319,10 @@
     #ch-roulette.landed #ch-roulette-num {
       animation: ch-roulette-land 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
       color: #1a4a8a;
+    }
+    #ch-roulette.landed.jackpot #ch-roulette-num {
+      color: #c45a00;
+      font-size: clamp(2.8rem, 14vw, 3.6rem);
     }
     @keyframes ch-roulette-tick {
       0% { transform: translateY(-6px); opacity: 0.5; }
@@ -294,10 +407,13 @@
         <div class="ch-hud-divider" aria-hidden="true"></div>
         <p class="ch-stat"><span>최고</span><strong id="ch-high">0</strong></p>
       </div>
-      <button type="button" id="ch-bonus-btn" disabled aria-label="보너스 사용">
-        <span class="ch-bonus-label">보너스</span>
-        <strong id="ch-bonus-count">0</strong>
-      </button>
+      <div class="ch-bonus-group">
+        <button type="button" id="ch-bonus-info-btn" aria-label="보너스 확률 안내">i</button>
+        <button type="button" id="ch-bonus-btn" disabled aria-label="보너스 사용">
+          <span class="ch-bonus-label">보너스</span>
+          <strong id="ch-bonus-count">0</strong>
+        </button>
+      </div>
       <button type="button" id="ch-home-btn" aria-label="홈 화면">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 11h2v9h5v-6h4v6h5v-9h2L12 3z"/></svg>
       </button>
@@ -316,6 +432,20 @@
     </div>
   </div>
 
+  <div id="ch-bonus-info-modal" aria-hidden="true" role="dialog" aria-labelledby="ch-bonus-info-title">
+    <div class="ch-bonus-info-box">
+      <h3 id="ch-bonus-info-title">보너스 룰렛 확률</h3>
+      <p>500점마다 보너스 크레딧 1개 · 여러 개 보유 가능</p>
+      <table class="ch-bonus-odds-table">
+        <thead>
+          <tr><th>결과</th><th>확률</th><th>효과</th></tr>
+        </thead>
+        <tbody id="ch-bonus-odds-body"></tbody>
+      </table>
+      <button type="button" class="ch-bonus-info-close" id="ch-bonus-info-close">닫기</button>
+    </div>
+  </div>
+
   <div id="ch-overlay" aria-hidden="true">
     <div class="ch-modal">
       <h2>게임 종료</h2>
@@ -331,8 +461,23 @@
     const GUIDED_BREAK_LIMIT = 30;
     const HIGH_SCORE_KEY = "luise-challenge-highscore";
     const START_EMPTY_COLS = [3, 4];
-    const BONUS_SCORE_STEP = 1000;
+    const BONUS_SCORE_STEP = 500;
     const BOMB_TOAST_MS = 1500;
+    const JACKPOT_PICKS = 20;
+    const BONUS_ODDS = [
+      { label: "1", pct: 15, picks: 1, jackpot: false, desc: "폭탄 1개" },
+      { label: "2", pct: 15, picks: 2, jackpot: false, desc: "폭탄 2개" },
+      { label: "3", pct: 15, picks: 3, jackpot: false, desc: "폭탄 3개" },
+      { label: "4", pct: 15, picks: 4, jackpot: false, desc: "폭탄 4개" },
+      { label: "5", pct: 15, picks: 5, jackpot: false, desc: "폭탄 5개" },
+      { label: "6", pct: 5, picks: 6, jackpot: false, desc: "폭탄 6개" },
+      { label: "7", pct: 5, picks: 7, jackpot: false, desc: "폭탄 7개" },
+      { label: "8", pct: 5, picks: 8, jackpot: false, desc: "폭탄 8개" },
+      { label: "9", pct: 5, picks: 9, jackpot: false, desc: "폭탄 9개" },
+      { label: "10", pct: 3, picks: 10, jackpot: false, desc: "폭탄 10개" },
+      { label: "★", pct: 2, picks: JACKPOT_PICKS, jackpot: true, desc: "잭팟 — 타일 20개" },
+    ];
+    const ROULETTE_TICK_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "★"];
     const CLEAR_POP_SRC = "./clear-pop.png";
 
     const MIN_DRAG_MERGE_PX = 14;
@@ -343,6 +488,10 @@
     const scoreEl = document.getElementById("ch-score");
     const highEl = document.getElementById("ch-high");
     const bonusBtn = document.getElementById("ch-bonus-btn");
+    const bonusInfoBtn = document.getElementById("ch-bonus-info-btn");
+    const bonusInfoModal = document.getElementById("ch-bonus-info-modal");
+    const bonusOddsBody = document.getElementById("ch-bonus-odds-body");
+    const bonusInfoCloseBtn = document.getElementById("ch-bonus-info-close");
     const bonusCountEl = document.getElementById("ch-bonus-count");
     const toastEl = document.getElementById("ch-toast");
     const rouletteEl = document.getElementById("ch-roulette");
@@ -410,15 +559,22 @@
       } catch (_) {}
     }
 
-    function playRouletteLandSound(result) {
+    function playRouletteLandSound(result, isJackpot) {
       try {
         const ctx = ensureAudio();
         const now = ctx.currentTime;
+        if (isJackpot) {
+          [880, 1108.73, 1318.51, 1567.98, 1760, 2093].forEach((f, i) => {
+            playTone(f, now + i * 0.07, 0.12, 0.24, "triangle");
+          });
+          playTone(2637, now + 0.45, 0.28, 0.3, "sine");
+          return;
+        }
         const notes = [659.25, 830.61, 987.77, 1174.66];
         notes.forEach((f, i) => {
           playTone(f, now + i * 0.075, 0.11, 0.2, "triangle");
         });
-        const peak = [1046.5, 1174.66, 1318.51, 1567.98, 1760][result - 1] || 1318.51;
+        const peak = [1046.5, 1174.66, 1318.51, 1567.98, 1760, 1975, 2093, 2349, 2637, 2793][result - 1] || 1318.51;
         playTone(peak, now + 0.32, 0.22, 0.28, "triangle");
         playTone(peak * 1.25, now + 0.38, 0.14, 0.14, "sine");
       } catch (_) {}
@@ -975,10 +1131,58 @@
       return list;
     }
 
+    function rollBonusOutcome() {
+      const r = Math.random() * 100;
+      let acc = 0;
+      for (const item of BONUS_ODDS) {
+        acc += item.pct;
+        if (r < acc) return item;
+      }
+      return BONUS_ODDS[BONUS_ODDS.length - 1];
+    }
+
+    function isBonusRescueActive() {
+      return (
+        gameRunning &&
+        mergeCount >= 1 &&
+        bombPhase === "idle" &&
+        bonusCredits > 0 &&
+        shouldEndGame()
+      );
+    }
+
     function updateBonusButton() {
       bonusCountEl.textContent = String(bonusCredits);
+      const rescue = isBonusRescueActive();
+      wrap.classList.toggle("bonus-rescue", rescue);
+      bonusBtn.classList.toggle("rescue-highlight", rescue);
       bonusBtn.disabled =
         !gameRunning || bonusCredits < 1 || bombPhase !== "idle";
+    }
+
+    function buildBonusOddsTable() {
+      bonusOddsBody.innerHTML = BONUS_ODDS.map(
+        (item) =>
+          '<tr class="' +
+          (item.jackpot ? "jackpot-row" : "") +
+          '"><td>' +
+          item.label +
+          "</td><td>" +
+          item.pct +
+          "%</td><td>" +
+          item.desc +
+          "</td></tr>"
+      ).join("");
+    }
+
+    function openBonusInfoModal() {
+      bonusInfoModal.classList.add("show");
+      bonusInfoModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeBonusInfoModal() {
+      bonusInfoModal.classList.remove("show");
+      bonusInfoModal.setAttribute("aria-hidden", "true");
     }
 
     function grantBonusMilestones() {
@@ -1004,42 +1208,43 @@
         clearTimeout(rouletteStepTimer);
         rouletteStepTimer = null;
       }
-      rouletteEl.classList.remove("show", "spinning", "landed");
+      rouletteEl.classList.remove("show", "spinning", "landed", "jackpot");
       rouletteEl.setAttribute("aria-hidden", "true");
     }
 
-    function runBombRoulette(finalN, onComplete) {
+    function runBombRoulette(outcome, onComplete) {
       cancelRoulette();
       setBombPhase("roulette");
       rouletteEl.classList.add("show", "spinning");
-      rouletteEl.classList.remove("landed");
+      rouletteEl.classList.remove("landed", "jackpot");
       rouletteEl.setAttribute("aria-hidden", "false");
       rouletteNumEl.textContent = "1";
 
-      const spins = 18 + Math.floor(Math.random() * 10);
+      const spins = 20 + Math.floor(Math.random() * 12);
       let step = 0;
 
       function tick() {
         if (step >= spins) {
-          playRouletteLandSound(finalN);
+          playRouletteLandSound(outcome.picks, outcome.jackpot);
           rouletteEl.classList.remove("spinning");
           rouletteEl.classList.add("landed");
-          rouletteNumEl.textContent = String(finalN);
+          if (outcome.jackpot) rouletteEl.classList.add("jackpot");
+          rouletteNumEl.textContent = outcome.label;
           rouletteStepTimer = setTimeout(() => {
             rouletteStepTimer = null;
             cancelRoulette();
             onComplete();
-          }, 500);
+          }, outcome.jackpot ? 700 : 500);
           return;
         }
         playRouletteTickSound(step, spins);
-        rouletteNumEl.textContent = String(1 + (step % 5));
+        rouletteNumEl.textContent = ROULETTE_TICK_LABELS[step % ROULETTE_TICK_LABELS.length];
         void rouletteNumEl.offsetWidth;
         rouletteEl.classList.remove("spinning");
         rouletteEl.classList.add("spinning");
         step++;
         const progress = step / spins;
-        const delay = Math.round(50 + progress * progress * 200);
+        const delay = Math.round(50 + progress * progress * 220);
         rouletteStepTimer = setTimeout(tick, delay);
       }
 
@@ -1059,16 +1264,21 @@
       } catch (_) {}
       bonusCredits--;
       updateBonusButton();
-      const n = 1 + Math.floor(Math.random() * 5);
-      bombPicksLeft = n;
-      runBombRoulette(n, () => {
+      const outcome = rollBonusOutcome();
+      bombPicksLeft = outcome.picks;
+      runBombRoulette(outcome, () => {
         setBombPhase("announcing");
-        showBombToast("폭탄 " + n + "개 획득!");
+        showBombToast(
+          outcome.jackpot
+            ? "잭팟! 타일 " + outcome.picks + "개!"
+            : "폭탄 " + outcome.picks + "개 획득!"
+        );
         if (bombToastTimer) clearTimeout(bombToastTimer);
         bombToastTimer = setTimeout(() => {
           bombToastTimer = null;
           hideBombToast();
           setBombPhase("picking");
+          updateBonusButton();
           draw();
         }, BOMB_TOAST_MS);
       });
@@ -1083,8 +1293,10 @@
       popEffects.push({ c, r, until: performance.now() + 280 });
       syncViewport();
       scheduleLayout();
-      if (bombPicksLeft <= 0) setBombPhase("idle");
-      else draw();
+      if (bombPicksLeft <= 0) {
+        setBombPhase("idle");
+        updateBonusButton();
+      } else draw();
       checkGameEnd();
       return true;
     }
@@ -1155,7 +1367,11 @@
     function checkGameEnd() {
       if (!gameRunning || mergeCount < 1) return;
       syncViewport();
-      if (shouldEndGame()) endGame();
+      updateBonusButton();
+      if (shouldEndGame()) {
+        if (bonusCredits > 0 && bombPhase === "idle") return;
+        endGame();
+      }
     }
 
     function applyMergeTen(fromC, fromR, toC, toR) {
@@ -1221,7 +1437,7 @@
       ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
       ctx.lineWidth = 1.2;
       ctx.stroke();
-      const fs = Math.max(13, Math.round(hexSize * 0.58));
+      const fs = Math.max(15, Math.round(hexSize * 0.66));
       ctx.font = "700 " + fs + "px system-ui,sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -1342,6 +1558,16 @@
         ctx.fillText("남은 폭탄 " + bombPicksLeft + "개 — 타일을 탭하세요", w / 2, 10);
         ctx.restore();
       }
+
+      if (isBonusRescueActive()) {
+        ctx.save();
+        ctx.font = "700 14px system-ui,sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "rgba(196, 90, 0, 0.95)";
+        ctx.fillText("더 이상 합칠 수 없어요! 보너스를 사용하세요", w / 2, 10);
+        ctx.restore();
+      }
     }
 
     function endGame() {
@@ -1353,6 +1579,7 @@
       cancelRoulette();
       hideBombToast();
       setBombPhase("idle");
+      updateBonusButton();
       gameRunning = false;
       endMsgEl.textContent =
         "축하합니다 " + score + "점수를 획득하였습니다.";
@@ -1373,6 +1600,7 @@
       }
       cancelRoulette();
       hideBombToast();
+      closeBonusInfoModal();
       setBombPhase("idle");
       scoreEl.textContent = "0";
       popEffects = [];
@@ -1395,6 +1623,7 @@
 
     function onPointerDown(e) {
       if (!gameRunning) return;
+      if (isBonusRescueActive()) return;
       e.preventDefault();
       const { px, py } = pointerPos(e);
 
@@ -1521,6 +1750,18 @@
 
     bonusBtn.addEventListener("click", () => {
       activateBonus();
+    });
+
+    buildBonusOddsTable();
+    bonusInfoBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openBonusInfoModal();
+    });
+    bonusInfoCloseBtn.addEventListener("click", () => {
+      closeBonusInfoModal();
+    });
+    bonusInfoModal.addEventListener("click", (e) => {
+      if (e.target === bonusInfoModal) closeBonusInfoModal();
     });
 
     document.getElementById("ch-home-btn").addEventListener("click", () => {
