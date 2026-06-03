@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#bcdcff" />
+  <title>루이 체리 게임 — 도전모드 Beta</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: #bcdcff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: #1a1a1a;
+      overflow: hidden;
+    }
+    #challenge-screen {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+    }
+    #ch-hud {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 48px;
+      padding:
+        max(6px, env(safe-area-inset-top))
+        max(12px, env(safe-area-inset-right))
+        6px
+        max(12px, env(safe-area-inset-left));
+      background: rgba(255, 255, 255, 0.92);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ch-hud-stats {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 0;
+      min-width: 0;
+    }
+    .ch-stat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      margin: 0;
+      min-width: 0;
+      padding: 4px 6px;
+    }
+    .ch-stat span {
+      opacity: 0.65;
+      font-weight: 600;
+      font-size: 0.65rem;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+    }
+    .ch-stat strong {
+      font-size: clamp(1.05rem, 5vw, 1.25rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+      color: #1a4a8a;
+    }
+    .ch-hud-divider {
+      width: 1px;
+      align-self: center;
+      height: 28px;
+      background: rgba(26, 74, 138, 0.15);
+      flex-shrink: 0;
+    }
+    #ch-home-btn {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      border: none;
+      border-radius: 10px;
+      background: #ffe066;
+      color: #1a4a8a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      touch-action: manipulation;
+    }
+    #ch-home-btn svg { width: 24px; height: 24px; fill: currentColor; }
+    @media (max-width: 360px) {
+      #ch-hud {
+        gap: 6px;
+        min-height: 44px;
+      }
+      .ch-stat {
+        padding: 2px 4px;
+      }
+      .ch-stat span {
+        font-size: 0.6rem;
+      }
+      .ch-hud-divider {
+        height: 24px;
+      }
+    }
+    #ch-board-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    #ch-board {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: grab;
+    }
+    #ch-board.dragging { cursor: grabbing; }
+    #ch-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 20px;
+    }
+    #ch-overlay.show { display: flex; }
+    .ch-modal {
+      background: #2d5016;
+      border: 2px solid #ffe066;
+      border-radius: 12px;
+      padding: 28px 24px;
+      text-align: center;
+      max-width: 90vw;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+    .ch-modal h2 { margin: 0 0 12px; color: #fff; font-size: 1.2rem; }
+    .ch-modal p { margin: 0 0 20px; color: #fff; line-height: 1.5; }
+    .ch-modal-btn {
+      font: inherit;
+      font-weight: 600;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 8px;
+      background: #ffe066;
+      color: #1a1a1a;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="challenge-screen">
+    <header id="ch-hud">
+      <div class="ch-hud-stats" aria-label="점수">
+        <p class="ch-stat"><span>현재</span><strong id="ch-score">0</strong></p>
+        <div class="ch-hud-divider" aria-hidden="true"></div>
+        <p class="ch-stat"><span>최고</span><strong id="ch-high">0</strong></p>
+      </div>
+      <button type="button" id="ch-home-btn" aria-label="홈 화면">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 11h2v9h5v-6h4v6h5v-9h2L12 3z"/></svg>
+      </button>
+    </header>
+    <div id="ch-board-wrap">
+      <canvas id="ch-board"></canvas>
+    </div>
+  </div>
+
+  <div id="ch-overlay" aria-hidden="true">
+    <div class="ch-modal">
+      <h2>게임 종료</h2>
+      <p id="ch-end-msg"></p>
+      <button type="button" class="ch-modal-btn" id="ch-end-home">홈 화면</button>
+    </div>
+  </div>
+
+  <script>
+    const HEX_COLS = 8;
+    const VISIBLE_ROWS = 16;
+    const SCORE_PER_TILE = 5;
+    const GUIDED_BREAK_LIMIT = 30;
+    const HIGH_SCORE_KEY = "luise-challenge-highscore";
+    const START_EMPTY_COLS = [3, 4];
+
+    const MIN_DRAG_MERGE_PX = 14;
+
+    const canvas = document.getElementById("ch-board");
+    const ctx = canvas.getContext("2d");
+    const wrap = document.getElementById("ch-board-wrap");
+    const scoreEl = document.getElementById("ch-score");
+    const highEl = document.getElementById("ch-high");
+    const overlay = document.getElementById("ch-overlay");
+    const endMsgEl = document.getElementById("ch-end-msg");
+    const endHomeBtn = document.getElementById("ch-end-home");
+
+    let grid = new Map();
+    let minRow = 0;
+    let viewBottomRow = VISIBLE_ROWS - 1;
+    let hexSize = 24;
+    let originX = 0;
+    let originY = 0;
+    let score = 0;
+    let highScore = 0;
+    let mergeCount = 0;
+    let tilesBroken = 0;
+    let gameRunning = false;
+    let drag = null;
+    let popEffects = [];
+
+    function key(c, r) {
+      return c + "," + r;
+    }
+
+    function getCell(c, r) {
+      return grid.get(key(c, r));
+    }
+
+    function setCell(c, r, cell) {
+      const k = key(c, r);
+      if (cell == null) grid.delete(k);
+      else grid.set(k, cell);
+    }
+
+    function makeHidden(value) {
+      return { state: "hidden", value: value };
+    }
+
+    function makeRevealed(value) {
+      return { state: "revealed", value: value };
+    }
+
+    function makeEmpty() {
+      return { state: "empty" };
+    }
+
+    function ensureCell(c, r) {
+      const cell = getCell(c, r);
+      if (cell) return cell;
+      const created = makeHidden(randValue());
+      setCell(c, r, created);
+      return created;
+    }
+
+    function getRevealedValue(c, r) {
+      const cell = getCell(c, r);
+      if (!cell || cell.state !== "revealed") return null;
+      return cell.value;
+    }
+
+    function isEmptyCell(c, r) {
+      const cell = getCell(c, r);
+      return cell && cell.state === "empty";
+    }
+
+    function centerDist2(c1, r1, c2, r2) {
+      const a = hexCenter(c1, r1);
+      const b = hexCenter(c2, r2);
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return dx * dx + dy * dy;
+    }
+
+    function neighbors(col, row) {
+      const list = [];
+      for (const [k, cell] of grid) {
+        if (!cell || cell.state === "empty") continue;
+        const parts = k.split(",");
+        const c = +parts[0];
+        const r = +parts[1];
+        if (c === col && r === row) continue;
+        list.push({ c, r, d2: centerDist2(col, row, c, r) });
+      }
+      if (!list.length) return [];
+      list.sort((a, b) => a.d2 - b.d2);
+      const minD2 = list[0].d2;
+      const band = Math.max(hexSize * hexSize * 0.12, minD2 * 0.18);
+      const cutoff = minD2 + band;
+      const out = [];
+      for (const p of list) {
+        if (p.d2 <= cutoff) out.push([p.c, p.r]);
+        else break;
+      }
+      return out;
+    }
+
+    function isHexNeighbor(c1, r1, c2, r2) {
+      return neighbors(c1, r1).some(([nc, nr]) => nc === c2 && nr === r2);
+    }
+
+    function canMergeCells(c1, r1, c2, r2) {
+      if (c1 === c2 && r1 === r2) return false;
+      const v1 = getRevealedValue(c1, r1);
+      const v2 = getRevealedValue(c2, r2);
+      return v1 != null && v2 != null && v1 + v2 === 10;
+    }
+
+    function forEachRevealedInView(fn) {
+      const topRow = getViewTopRow();
+      for (let r = topRow; r <= viewBottomRow; r++) {
+        for (let c = 0; c < HEX_COLS; c++) {
+          const v = getRevealedValue(c, r);
+          if (v != null) fn(c, r, v);
+        }
+      }
+    }
+
+    function getViewTopRow() {
+      return viewBottomRow - VISIBLE_ROWS + 1;
+    }
+
+    function hexCenter(col, row) {
+      const topRow = getViewTopRow();
+      const x = hexSize * (Math.sqrt(3) * (col + 0.5 * (row & 1)));
+      const y = hexSize * (1.5 * (row - topRow));
+      return { x: originX + x, y: originY + y };
+    }
+
+    function pixelToHex(px, py, onlyRevealed, skipC, skipR) {
+      let best = null;
+      let bestD = Infinity;
+      const topRow = getViewTopRow();
+      for (let r = topRow; r <= viewBottomRow; r++) {
+        for (let c = 0; c < HEX_COLS; c++) {
+          if (skipC != null && skipR != null && c === skipC && r === skipR) continue;
+          const cell = getCell(c, r);
+          if (!cell || cell.state === "empty") continue;
+          if (onlyRevealed && cell.state !== "revealed") continue;
+          const { x, y } = hexCenter(c, r);
+          const dx = px - x;
+          const dy = py - y;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) {
+            bestD = d;
+            best = [c, r];
+          }
+        }
+      }
+      if (!best || bestD > hexSize * hexSize * 1.35) return null;
+      return best;
+    }
+
+    function nearestMergeableAt(fromC, fromR, px, py) {
+      const dropLimit2 = hexSize * hexSize * 1.35;
+      let best = null;
+      let bestD = Infinity;
+      forEachRevealedInView((c, r) => {
+        if (c === fromC && r === fromR) return;
+        if (!canMergeCells(fromC, fromR, c, r)) return;
+        const { x, y } = hexCenter(c, r);
+        const d = (px - x) * (px - x) + (py - y) * (py - y);
+        if (d < bestD) {
+          bestD = d;
+          best = [c, r];
+        }
+      });
+      if (!best || bestD > dropLimit2) return null;
+      return best;
+    }
+
+    function resolveMergeTarget(
+      fromC,
+      fromR,
+      dragValue,
+      releaseX,
+      releaseY,
+      hitC,
+      hitR,
+      hoverC,
+      hoverR
+    ) {
+      if (dragValue == null) return null;
+
+      function pick(c, r) {
+        if (c == null || r == null) return null;
+        if (c === fromC && r === fromR) return null;
+        if (!canMergeCells(fromC, fromR, c, r)) return null;
+        return [c, r];
+      }
+
+      const hoverPick = pick(hoverC, hoverR);
+      if (hoverPick) return hoverPick;
+
+      const hitPick = pick(hitC, hitR);
+      if (hitPick) return hitPick;
+
+      return nearestMergeableAt(fromC, fromR, releaseX, releaseY);
+    }
+
+    function ensureRowExists(r) {
+      if (r > viewBottomRow) return false;
+      while (minRow > r) {
+        minRow--;
+        for (let cc = 0; cc < HEX_COLS; cc++) {
+          if (!getCell(cc, minRow)) setCell(cc, minRow, makeHidden(randValue()));
+        }
+      }
+      return true;
+    }
+
+    function isVisibleRow(r) {
+      const top = viewBottomRow - VISIBLE_ROWS + 1;
+      return r >= top && r <= viewBottomRow;
+    }
+
+    function randValue() {
+      return 1 + Math.floor(Math.random() * 9);
+    }
+
+    function randValueLow() {
+      return 1 + Math.floor(Math.random() * 5);
+    }
+
+    function randPairHalf() {
+      const pairs = [
+        [1, 9],
+        [2, 8],
+        [3, 7],
+        [4, 6],
+        [5, 5],
+      ];
+      const p = pairs[Math.floor(Math.random() * pairs.length)];
+      return Math.random() < 0.5 ? p[0] : p[1];
+    }
+
+    function complementOf(n) {
+      const v = 10 - n;
+      return v >= 1 && v <= 9 ? v : null;
+    }
+
+    function getRevealedNeighborsOf(c, r) {
+      const out = [];
+      for (const [nc, nr] of neighbors(c, r)) {
+        const v = getRevealedValue(nc, nr);
+        if (v != null) out.push({ c: nc, r: nr, v });
+      }
+      return out;
+    }
+
+    function applyTempReveal(toReveal, values) {
+      for (let i = 0; i < toReveal.length; i++) {
+        const cell = toReveal[i][2];
+        cell.value = values[i];
+        cell.state = "revealed";
+      }
+    }
+
+    function revertTempReveal(toReveal) {
+      for (let i = 0; i < toReveal.length; i++) {
+        const cell = toReveal[i][2];
+        cell.state = "hidden";
+      }
+    }
+
+    function ensurePlayableAfterReveal(toReveal, values) {
+      applyTempReveal(toReveal, values);
+      if (hasMergeMove()) {
+        revertTempReveal(toReveal);
+        return values;
+      }
+
+      if (toReveal.length >= 2) {
+        for (let i = 0; i < toReveal.length; i++) {
+          const [c, r] = toReveal[i];
+          for (let j = i + 1; j < toReveal.length; j++) {
+            const [c2, r2] = toReveal[j];
+            if (!isHexNeighbor(c, r, c2, r2)) continue;
+            const a = randValueLow();
+            values[i] = a;
+            values[j] = 10 - a;
+            applyTempReveal(toReveal, values);
+            if (hasMergeMove()) {
+              revertTempReveal(toReveal);
+              return values;
+            }
+          }
+        }
+      }
+
+      for (let i = 0; i < toReveal.length; i++) {
+        const [c, r] = toReveal[i];
+        const adj = getRevealedNeighborsOf(c, r);
+        for (const nb of adj) {
+          const comp = complementOf(nb.v);
+          if (comp == null) continue;
+          values[i] = comp;
+          applyTempReveal(toReveal, values);
+          if (hasMergeMove()) {
+            revertTempReveal(toReveal);
+            return values;
+          }
+        }
+      }
+
+      for (let i = 0; i < toReveal.length; i++) {
+        values[i] = randPairHalf();
+      }
+      if (toReveal.length >= 2 && !values.some((v) => v <= 5)) {
+        values[Math.floor(Math.random() * toReveal.length)] = randValueLow();
+      }
+      revertTempReveal(toReveal);
+      return values;
+    }
+
+    function assignRevealValues(toReveal) {
+      const count = toReveal.length;
+      if (count === 0) return [];
+
+      const guided = tilesBroken < GUIDED_BREAK_LIMIT;
+      const values = new Array(count).fill(null);
+
+      if (guided) {
+        for (let i = 0; i < count; i++) {
+          if (values[i] != null) continue;
+          const [c, r] = toReveal[i];
+          for (let j = i + 1; j < count; j++) {
+            if (values[j] != null) continue;
+            const [c2, r2] = toReveal[j];
+            if (!isHexNeighbor(c, r, c2, r2)) continue;
+            const a = randValueLow();
+            values[i] = a;
+            values[j] = 10 - a;
+            break;
+          }
+        }
+        for (let i = 0; i < count; i++) {
+          if (values[i] != null) continue;
+          const [c, r] = toReveal[i];
+          const adj = getRevealedNeighborsOf(c, r);
+          if (adj.length > 0 && Math.random() < 0.35) {
+            const comp = complementOf(adj[Math.floor(Math.random() * adj.length)].v);
+            if (comp != null) values[i] = comp;
+          }
+        }
+        for (let i = 0; i < count; i++) {
+          if (values[i] == null) values[i] = randPairHalf();
+        }
+        if (count >= 2 && !values.some((v) => v <= 5)) {
+          values[Math.floor(Math.random() * count)] = randValueLow();
+        }
+        return ensurePlayableAfterReveal(toReveal, values);
+      }
+
+      for (let i = 0; i < count; i++) values[i] = randValue();
+      if (count >= 2 && !values.some((v) => v <= 5)) {
+        values[Math.floor(Math.random() * count)] = randValueLow();
+      }
+      return values;
+    }
+
+    function ensureRowsAbove() {
+      const topNeeded = viewBottomRow - VISIBLE_ROWS + 1;
+      while (minRow > topNeeded) {
+        minRow--;
+        for (let c = 0; c < HEX_COLS; c++) {
+          setCell(c, minRow, makeHidden(randValue()));
+        }
+      }
+    }
+
+    function fillInitialBoard() {
+      grid.clear();
+      minRow = 0;
+      viewBottomRow = VISIBLE_ROWS - 1;
+      const startPairs = [
+        [4, 6],
+        [3, 7],
+        [5, 5],
+        [2, 8],
+        [1, 9],
+      ];
+      const pair = startPairs[Math.floor(Math.random() * startPairs.length)];
+      for (let r = minRow; r <= viewBottomRow; r++) {
+        for (let c = 0; c < HEX_COLS; c++) {
+          setCell(c, r, makeHidden(randValue()));
+        }
+      }
+      setCell(START_EMPTY_COLS[0], viewBottomRow, makeRevealed(pair[0]));
+      setCell(START_EMPTY_COLS[1], viewBottomRow, makeRevealed(pair[1]));
+    }
+
+    function revealedTileCount() {
+      let n = 0;
+      for (const cell of grid.values()) {
+        if (cell.state === "revealed") n++;
+      }
+      return n;
+    }
+
+    function hasMergeMove() {
+      const tiles = [];
+      for (const [k, cell] of grid) {
+        if (cell.state !== "revealed") continue;
+        const parts = k.split(",");
+        tiles.push(cell.value);
+      }
+      for (let i = 0; i < tiles.length; i++) {
+        for (let j = i + 1; j < tiles.length; j++) {
+          if (tiles[i] + tiles[j] === 10) return true;
+        }
+      }
+      return false;
+    }
+
+    function getMaxOccupiedRow() {
+      let maxR = -Infinity;
+      for (const [k, cell] of grid) {
+        if (!cell || cell.state === "empty") continue;
+        const r = parseInt(k.split(",")[1], 10);
+        if (r > maxR) maxR = r;
+      }
+      return maxR === -Infinity ? viewBottomRow : maxR;
+    }
+
+    function pruneRowsBelow(maxR) {
+      for (const k of [...grid.keys()]) {
+        const r = parseInt(k.split(",")[1], 10);
+        if (r > maxR) grid.delete(k);
+      }
+    }
+
+    function syncViewport() {
+      const maxR = getMaxOccupiedRow();
+      viewBottomRow = Math.max(maxR, VISIBLE_ROWS - 1);
+      pruneRowsBelow(viewBottomRow);
+      ensureRowsAbove();
+    }
+
+    function uniqueNeighborCells(cells) {
+      const set = new Set();
+      const list = [];
+      for (const [c, r] of cells) {
+        for (const [nc, nr] of neighbors(c, r)) {
+          const k = key(nc, nr);
+          if (!set.has(k)) {
+            set.add(k);
+            list.push([nc, nr]);
+          }
+        }
+      }
+      return list;
+    }
+
+    function addScore(n) {
+      score += n * SCORE_PER_TILE;
+      scoreEl.textContent = String(score);
+      if (score > highScore) {
+        highScore = score;
+        highEl.textContent = String(highScore);
+        try {
+          localStorage.setItem(HIGH_SCORE_KEY, String(highScore));
+        } catch (_) {}
+      }
+    }
+
+    function breakNeighborsOf(pairCells) {
+      const adj = uniqueNeighborCells(pairCells);
+      const toReveal = [];
+      for (const [c, r] of adj) {
+        if (pairCells.some(([pc, pr]) => pc === c && pr === r)) continue;
+        if (c < 0 || c >= HEX_COLS || r > viewBottomRow) continue;
+        if (!ensureRowExists(r)) continue;
+        let cell = getCell(c, r);
+        if (!cell) {
+          cell = makeHidden(randValue());
+          setCell(c, r, cell);
+        }
+        if (cell.state !== "hidden") continue;
+        toReveal.push([c, r, cell]);
+      }
+      const values = assignRevealValues(toReveal);
+      for (let i = 0; i < toReveal.length; i++) {
+        const [c, r, cell] = toReveal[i];
+        cell.value = values[i];
+        cell.state = "revealed";
+        popEffects.push({ c, r, until: performance.now() + 280 });
+      }
+      if (toReveal.length > 0) {
+        tilesBroken += toReveal.length;
+        addScore(toReveal.length);
+      }
+      return toReveal.length;
+    }
+
+    function collapseMergedCell(c, r) {
+      setCell(c, r, makeEmpty());
+    }
+
+    function shouldEndGame() {
+      if (revealedTileCount() < 2) return true;
+      return !hasMergeMove();
+    }
+
+    function checkGameEnd() {
+      if (!gameRunning || mergeCount < 1) return;
+      syncViewport();
+      if (shouldEndGame()) endGame();
+    }
+
+    function applyMergeTen(fromC, fromR, toC, toR) {
+      if (!canMergeCells(fromC, fromR, toC, toR)) return;
+      mergeCount++;
+      const pairCells = [
+        [fromC, fromR],
+        [toC, toR],
+      ];
+      breakNeighborsOf(pairCells);
+      collapseMergedCell(fromC, fromR);
+      collapseMergedCell(toC, toR);
+      syncViewport();
+      resize();
+    }
+
+    function rowIsFullyEmpty(r) {
+      for (let c = 0; c < HEX_COLS; c++) {
+        const cell = getCell(c, r);
+        if (!cell || cell.state === "empty") continue;
+        return false;
+      }
+      return true;
+    }
+
+    function drawHex(cx, cy, fillStyle, strokeStyle, lineW) {
+      const s = hexSize * 0.92;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const ang = (Math.PI / 180) * (60 * i - 30);
+        const hx = cx + s * Math.cos(ang);
+        const hy = cy + s * Math.sin(ang);
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = fillStyle;
+      ctx.fill();
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineW;
+      ctx.stroke();
+    }
+
+    function drawRevealedNumber(cx, cy, val, alpha) {
+      ctx.save();
+      ctx.globalAlpha = alpha == null ? 1 : alpha;
+      drawHex(cx, cy, "#bcdcff", "rgba(26, 74, 138, 0.2)", 1);
+      ctx.font = "700 " + Math.max(13, Math.round(hexSize * 0.58)) + "px system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#1a4a8a";
+      ctx.fillText(String(val), cx, cy);
+      ctx.restore();
+    }
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const vertSpan = VISIBLE_ROWS * 1.5 + 0.5;
+      const horizSpan = Math.sqrt(3) * (HEX_COLS + 0.5);
+      hexSize = Math.min(w / horizSpan, h / vertSpan) * 0.96;
+      const gridW = hexSize * horizSpan;
+      const gridH = hexSize * VISIBLE_ROWS * 1.5;
+      originX = (w - gridW) / 2 + hexSize * Math.sqrt(3) / 2;
+      originY = h - gridH - hexSize * 0.35;
+    }
+
+    function draw() {
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      ctx.fillStyle = "#bcdcff";
+      ctx.fillRect(0, 0, w, h);
+
+      const topRow = getViewTopRow();
+      const cells = [];
+      for (let r = topRow; r <= viewBottomRow; r++) {
+        for (let c = 0; c < HEX_COLS; c++) {
+          let cell = getCell(c, r);
+          if (!cell) continue;
+          if (cell.state === "empty") continue;
+
+          const { x, y } = hexCenter(c, r);
+          const val = getRevealedValue(c, r);
+          const isDragSource =
+            drag && drag.fromC === c && drag.fromR === r && drag.active;
+
+          if (cell.state === "hidden") {
+            drawHex(x, y, "#ffffff", "rgba(26,74,138,0.2)", 1.2);
+          }
+
+          const canMergeHere =
+            drag &&
+            drag.active &&
+            !isDragSource &&
+            val != null &&
+            canMergeCells(drag.fromC, drag.fromR, c, r);
+          const isHover =
+            drag &&
+            drag.active &&
+            drag.hoverC === c &&
+            drag.hoverR === r &&
+            canMergeHere;
+          if (canMergeHere) {
+            drawHex(x, y, "rgba(255, 230, 102, 0.32)", "#ffb703", 2);
+          }
+          if (isHover) {
+            drawHex(x, y, "rgba(255, 230, 102, 0.55)", "#ffb703", 2.5);
+          }
+          const pop = popEffects.find((e) => e.c === c && e.r === r);
+          if (pop && cell.state === "hidden") {
+            drawHex(x, y, "rgba(255,230,102,0.35)", "#ffb703", 2);
+          }
+          if (val != null && !isDragSource) cells.push({ x, y, val });
+        }
+      }
+      for (const cell of cells) drawRevealedNumber(cell.x, cell.y, cell.val, 1);
+
+      if (drag && drag.active && drag.value != null) {
+        drawRevealedNumber(drag.x, drag.y, drag.value, 0.95);
+      }
+
+      popEffects = popEffects.filter((e) => e.until > performance.now());
+    }
+
+    function endGame() {
+      if (hasMergeMove()) return;
+      gameRunning = false;
+      endMsgEl.textContent =
+        "축하합니다 " + score + "점수를 획득하였습니다.";
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+    }
+
+    function startGame() {
+      score = 0;
+      mergeCount = 0;
+      tilesBroken = 0;
+      scoreEl.textContent = "0";
+      popEffects = [];
+      fillInitialBoard();
+      gameRunning = true;
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+      syncViewport();
+      resize();
+      draw();
+    }
+
+    function pointerPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        px: e.clientX - rect.left,
+        py: e.clientY - rect.top,
+      };
+    }
+
+    function onPointerDown(e) {
+      if (!gameRunning) return;
+      e.preventDefault();
+      const { px, py } = pointerPos(e);
+      const hit = pixelToHex(px, py, true);
+      if (!hit) return;
+      const [c, r] = hit;
+      const v = getRevealedValue(c, r);
+      if (v == null) return;
+      drag = {
+        fromC: c,
+        fromR: r,
+        value: v,
+        startX: px,
+        startY: py,
+        x: px,
+        y: py,
+        active: true,
+        hoverC: null,
+        hoverR: null,
+      };
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      canvas.classList.add("dragging");
+      draw();
+    }
+
+    function onPointerMove(e) {
+      if (!drag || !drag.active) return;
+      const { px, py } = pointerPos(e);
+      drag.x = px;
+      drag.y = py;
+      let hit = pixelToHex(drag.x, drag.y, true, drag.fromC, drag.fromR);
+      if (
+        hit &&
+        canMergeCells(drag.fromC, drag.fromR, hit[0], hit[1])
+      ) {
+        drag.hoverC = hit[0];
+        drag.hoverR = hit[1];
+      } else {
+        hit = nearestMergeableAt(drag.fromC, drag.fromR, drag.x, drag.y);
+        drag.hoverC = hit ? hit[0] : null;
+        drag.hoverR = hit ? hit[1] : null;
+      }
+      draw();
+    }
+
+    let dragEnding = false;
+
+    function finishDrag(e) {
+      if (!drag || !drag.active || dragEnding) return;
+      dragEnding = true;
+      canvas.classList.remove("dragging");
+      const {
+        fromC,
+        fromR,
+        value,
+        startX,
+        startY,
+        x: lastX,
+        y: lastY,
+        hoverC,
+        hoverR,
+      } = drag;
+      const pos = e ? pointerPos(e) : { px: lastX, py: lastY };
+      const dragDist = Math.hypot(pos.px - startX, pos.py - startY);
+      const hit = pixelToHex(pos.px, pos.py, true, fromC, fromR);
+      drag.active = false;
+      drag = null;
+      try {
+        if (e) canvas.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+
+      const minDrag = Math.max(MIN_DRAG_MERGE_PX, hexSize * 0.35);
+      if (dragDist < minDrag) {
+        dragEnding = false;
+        draw();
+        return;
+      }
+
+      const target = resolveMergeTarget(
+        fromC,
+        fromR,
+        value,
+        pos.px,
+        pos.py,
+        hit ? hit[0] : null,
+        hit ? hit[1] : null,
+        hoverC,
+        hoverR
+      );
+      dragEnding = false;
+      if (target) {
+        applyMergeTen(fromC, fromR, target[0], target[1]);
+        draw();
+        setTimeout(() => {
+          syncViewport();
+          resize();
+          draw();
+          checkGameEnd();
+        }, 320);
+      } else {
+        draw();
+      }
+    }
+
+    function onPointerUp(e) {
+      finishDrag(e);
+    }
+
+    try {
+      highScore = parseInt(localStorage.getItem(HIGH_SCORE_KEY) || "0", 10) || 0;
+    } catch (_) {}
+    highEl.textContent = String(highScore);
+
+    document.getElementById("ch-home-btn").addEventListener("click", () => {
+      location.href = "./apple_game.html";
+    });
+    endHomeBtn.addEventListener("click", () => {
+      location.href = "./apple_game.html";
+    });
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerUp);
+    window.addEventListener("resize", () => {
+      resize();
+      draw();
+    });
+
+    startGame();
+    requestAnimationFrame(() => {
+      function loop() {
+        if (popEffects.length) draw();
+        requestAnimationFrame(loop);
+      }
+      loop();
+    });
+  </script>
+</body>
+</html>

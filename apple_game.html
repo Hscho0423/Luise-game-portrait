@@ -111,9 +111,16 @@
       background: rgba(255, 255, 255, 0.9);
       cursor: pointer;
     }
-    #start-btn {
+    .start-actions {
       width: min(400px, 100%);
       margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #start-btn {
+      width: 100%;
+      margin-top: 0;
       font: inherit;
       font-size: 1.1rem;
       font-weight: 700;
@@ -126,6 +133,35 @@
     }
     #start-btn:hover { filter: brightness(1.06); }
     #start-btn:active { transform: scale(0.99); }
+    #challenge-btn {
+      position: relative;
+      width: 100%;
+      font: inherit;
+      font-size: 1.05rem;
+      font-weight: 700;
+      padding: 14px 24px;
+      border: 2px solid #1a4a8a;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #1a4a8a;
+      cursor: pointer;
+    }
+    #challenge-btn:hover { background: rgba(26, 74, 138, 0.08); }
+    #challenge-btn:active { transform: scale(0.99); }
+    .beta-badge {
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #f94144;
+      color: #fff;
+      line-height: 1.2;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
     .last-updated {
       margin: 14px 0 0;
       font-size: 0.72rem;
@@ -321,7 +357,13 @@
         <select id="timer-select" aria-label="제한 시간 선택"></select>
       </div>
     </div>
-    <button type="button" id="start-btn">시작하기</button>
+    <div class="start-actions">
+      <button type="button" id="start-btn">시작하기</button>
+      <button type="button" id="challenge-btn">
+        도전모드
+        <span class="beta-badge">Beta</span>
+      </button>
+    </div>
     <p class="last-updated" id="last-updated"></p>
   </section>
 
@@ -1377,6 +1419,9 @@
     }
 
     startBtn.addEventListener("click", beginGameFromStart);
+    document.getElementById("challenge-btn").addEventListener("click", () => {
+      location.href = "./challenge_mode.html";
+    });
 
     lastUpdatedEl.textContent = "최종 수정일: " + formatLastUpdated(LAST_UPDATED);
     initTimerSelect();
