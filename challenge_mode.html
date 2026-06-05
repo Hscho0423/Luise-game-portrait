@@ -71,6 +71,39 @@
       line-height: 1.15;
       color: #1a4a8a;
     }
+    .ch-stat-value {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-height: 1.35rem;
+    }
+    .ch-tier-icon {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .ch-tier-icon[hidden] {
+      display: none;
+    }
+    .ch-info-btn {
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border: 1.5px solid rgba(26, 74, 138, 0.35);
+      border-radius: 50%;
+      background: #fff;
+      color: #1a4a8a;
+      font-size: 0.65rem;
+      font-weight: 800;
+      font-style: italic;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1;
+      cursor: pointer;
+      touch-action: manipulation;
+      flex-shrink: 0;
+    }
     .ch-hud-divider {
       width: 1px;
       align-self: center;
@@ -102,22 +135,10 @@
       gap: 4px;
       flex-shrink: 0;
     }
-    #ch-bonus-info-btn {
+    #ch-bonus-info-btn.ch-info-btn {
       width: 22px;
       height: 22px;
-      padding: 0;
-      border: 1.5px solid rgba(26, 74, 138, 0.35);
-      border-radius: 50%;
-      background: #fff;
-      color: #1a4a8a;
       font-size: 0.72rem;
-      font-weight: 800;
-      font-style: italic;
-      font-family: Georgia, "Times New Roman", serif;
-      line-height: 1;
-      cursor: pointer;
-      touch-action: manipulation;
-      flex-shrink: 0;
     }
     #ch-bonus-btn {
       display: flex;
@@ -167,7 +188,8 @@
       cursor: not-allowed;
       opacity: 0.72;
     }
-    #ch-bonus-info-modal {
+    #ch-bonus-info-modal,
+    #ch-tier-info-modal {
       display: none;
       position: fixed;
       inset: 0;
@@ -177,7 +199,8 @@
       padding: 20px;
       background: rgba(0, 0, 0, 0.45);
     }
-    #ch-bonus-info-modal.show {
+    #ch-bonus-info-modal.show,
+    #ch-tier-info-modal.show {
       display: flex;
     }
     .ch-bonus-info-box {
@@ -225,6 +248,12 @@
     .ch-bonus-odds-table .jackpot-row td {
       color: #c45a00;
       font-weight: 800;
+    }
+    .ch-bonus-odds-table .tier-icon-cell img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      vertical-align: middle;
     }
     .ch-bonus-info-close {
       display: block;
@@ -403,12 +432,25 @@
   <div id="challenge-screen">
     <header id="ch-hud">
       <div class="ch-hud-stats" aria-label="점수">
-        <p class="ch-stat"><span>현재</span><strong id="ch-score">0</strong></p>
+        <p class="ch-stat">
+          <span>현재</span>
+          <span class="ch-stat-value">
+            <strong id="ch-score">0</strong>
+            <img id="ch-score-tier" class="ch-tier-icon" alt="" hidden />
+            <button type="button" id="ch-tier-info-btn" class="ch-info-btn" aria-label="티어 기준 안내">i</button>
+          </span>
+        </p>
         <div class="ch-hud-divider" aria-hidden="true"></div>
-        <p class="ch-stat"><span>최고</span><strong id="ch-high">0</strong></p>
+        <p class="ch-stat">
+          <span>최고</span>
+          <span class="ch-stat-value">
+            <strong id="ch-high">0</strong>
+            <img id="ch-high-tier" class="ch-tier-icon" alt="" hidden />
+          </span>
+        </p>
       </div>
       <div class="ch-bonus-group">
-        <button type="button" id="ch-bonus-info-btn" aria-label="보너스 확률 안내">i</button>
+        <button type="button" id="ch-bonus-info-btn" class="ch-info-btn" aria-label="보너스 확률 안내">i</button>
         <button type="button" id="ch-bonus-btn" disabled aria-label="보너스 사용">
           <span class="ch-bonus-label">보너스</span>
           <strong id="ch-bonus-count">0</strong>
@@ -429,6 +471,20 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="ch-tier-info-modal" aria-hidden="true" role="dialog" aria-labelledby="ch-tier-info-title">
+    <div class="ch-bonus-info-box">
+      <h3 id="ch-tier-info-title">티어 기준</h3>
+      <p>현재·최고 점수에 따라 티어 아이콘이 표시됩니다.</p>
+      <table class="ch-bonus-odds-table">
+        <thead>
+          <tr><th>티어</th><th>필요 점수</th></tr>
+        </thead>
+        <tbody id="ch-tier-odds-body"></tbody>
+      </table>
+      <button type="button" class="ch-bonus-info-close" id="ch-tier-info-close">닫기</button>
     </div>
   </div>
 
@@ -478,15 +534,39 @@
       { label: "★", pct: 2, picks: JACKPOT_PICKS, jackpot: true, desc: "잭팟 — 타일 20개" },
     ];
     const ROULETTE_TICK_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "★"];
+    const RANK_TIERS = [
+      { name: "아이언", min: 1000, icon: "./tier-icons/iron.png" },
+      { name: "브론즈", min: 3000, icon: "./tier-icons/bronze.png" },
+      { name: "실버", min: 5000, icon: "./tier-icons/silver.png" },
+      { name: "골드", min: 7000, icon: "./tier-icons/gold.png" },
+      { name: "플래티넘", min: 10000, icon: "./tier-icons/platinum.png" },
+      { name: "에메랄드", min: 13000, icon: "./tier-icons/emerald.svg" },
+      { name: "다이아몬드", min: 15000, icon: "./tier-icons/diamond.png" },
+      { name: "마스터", min: 20000, icon: "./tier-icons/master.png" },
+      { name: "그랜드마스터", min: 25000, icon: "./tier-icons/grandmaster.png" },
+      { name: "챌린저", min: 30000, icon: "./tier-icons/challenger.png" },
+    ];
     const CLEAR_POP_SRC = "./clear-pop.png";
 
     const MIN_DRAG_MERGE_PX = 14;
+    const SPECIAL_RED_CHANCE = 0.005;
+    const SPECIAL_YELLOW_CHANCE = 0.005;
+    /** 빨간 타일: 해당 줄 + 위로 2줄, 각 줄의 모든 타일 (총 3줄) */
+    const RED_BLAST_ROWS = 3;
+    const RED_CHAIN_STEP_MS = 180;
+    const YELLOW_BONUS_TOAST_MS = 1000;
 
     const canvas = document.getElementById("ch-board");
     const ctx = canvas.getContext("2d");
     const wrap = document.getElementById("ch-board-wrap");
     const scoreEl = document.getElementById("ch-score");
+    const scoreTierEl = document.getElementById("ch-score-tier");
     const highEl = document.getElementById("ch-high");
+    const highTierEl = document.getElementById("ch-high-tier");
+    const tierInfoBtn = document.getElementById("ch-tier-info-btn");
+    const tierInfoModal = document.getElementById("ch-tier-info-modal");
+    const tierOddsBody = document.getElementById("ch-tier-odds-body");
+    const tierInfoCloseBtn = document.getElementById("ch-tier-info-close");
     const bonusBtn = document.getElementById("ch-bonus-btn");
     const bonusInfoBtn = document.getElementById("ch-bonus-info-btn");
     const bonusInfoModal = document.getElementById("ch-bonus-info-modal");
@@ -519,6 +599,10 @@
     let bombPicksLeft = 0;
     let bombToastTimer = null;
     let rouletteStepTimer = null;
+    let redChainActive = false;
+    let redChainQueue = [];
+    let lastRedRevealRow = null;
+    let yellowToastTimer = null;
     const clearPopImage = new Image();
     let clearPopReady = false;
     clearPopImage.addEventListener("load", () => {
@@ -648,8 +732,19 @@
       else grid.set(k, cell);
     }
 
+    function rollSpecialType() {
+      const red = Math.random() < SPECIAL_RED_CHANCE;
+      const yellow = Math.random() < SPECIAL_YELLOW_CHANCE;
+      if (red) return "red";
+      if (yellow) return "yellow";
+      return null;
+    }
+
     function makeHidden(value) {
-      return { state: "hidden", value: value };
+      const cell = { state: "hidden", value: value };
+      const special = rollSpecialType();
+      if (special) cell.special = special;
+      return cell;
     }
 
     function makeRevealed(value) {
@@ -1105,6 +1200,27 @@
       ensureRowsAbove();
     }
 
+    function syncViewportNoDropFill() {
+      trimBottomEmptyRows();
+      let maxR = getMaxOccupiedRow();
+      if (maxR === -Infinity) maxR = minRow;
+      viewBottomRow = maxR;
+      pruneRowsBelow(viewBottomRow);
+      ensureRowsAbove();
+    }
+
+    function syncViewportAfterRedBlast(revealRow) {
+      syncViewportNoDropFill();
+      if (revealRow == null) return;
+      if (viewBottomRow - VISIBLE_ROWS + 1 > revealRow) {
+        viewBottomRow = revealRow + VISIBLE_ROWS - 1;
+      }
+    }
+
+    function isRedChainPending() {
+      return redChainActive || redChainQueue.length > 0;
+    }
+
     function scheduleLayout() {
       requestAnimationFrame(() => {
         resize();
@@ -1129,6 +1245,55 @@
         }
       }
       return list;
+    }
+
+    function getTierForScore(value) {
+      let tier = null;
+      for (const item of RANK_TIERS) {
+        if (value >= item.min) tier = item;
+      }
+      return tier;
+    }
+
+    function updateTierIcon(imgEl, value) {
+      const tier = getTierForScore(value);
+      if (!tier) {
+        imgEl.hidden = true;
+        imgEl.removeAttribute("src");
+        imgEl.alt = "";
+        return;
+      }
+      imgEl.hidden = false;
+      imgEl.src = tier.icon;
+      imgEl.alt = tier.name;
+    }
+
+    function updateTierDisplays() {
+      updateTierIcon(scoreTierEl, score);
+      updateTierIcon(highTierEl, highScore);
+    }
+
+    function buildTierTable() {
+      tierOddsBody.innerHTML = RANK_TIERS.map(
+        (item) =>
+          '<tr><td class="tier-icon-cell"><img src="' +
+          item.icon +
+          '" alt="" aria-hidden="true" /> ' +
+          item.name +
+          "</td><td>" +
+          item.min.toLocaleString("ko-KR") +
+          "점+</td></tr>"
+      ).join("");
+    }
+
+    function openTierInfoModal() {
+      tierInfoModal.classList.add("show");
+      tierInfoModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeTierInfoModal() {
+      tierInfoModal.classList.remove("show");
+      tierInfoModal.setAttribute("aria-hidden", "true");
     }
 
     function rollBonusOutcome() {
@@ -1201,6 +1366,109 @@
 
     function hideBombToast() {
       toastEl.classList.remove("show");
+    }
+
+    function showYellowBonusToast() {
+      showBombToast("보너스 1개 추가!");
+      if (yellowToastTimer) clearTimeout(yellowToastTimer);
+      yellowToastTimer = setTimeout(() => {
+        yellowToastTimer = null;
+        hideBombToast();
+      }, YELLOW_BONUS_TOAST_MS);
+    }
+
+    function triggerYellowBonus() {
+      bonusCredits++;
+      updateBonusButton();
+      showYellowBonusToast();
+    }
+
+    function runRedColumnChainAnimated(triggerC, startR, onComplete) {
+      const rows = [];
+      for (let i = 0; i < RED_BLAST_ROWS; i++) rows.push(startR - i);
+      const topRow = rows[rows.length - 1];
+      while (minRow > topRow) pushRowAbove();
+
+      let rowIdx = 0;
+
+      function finishChain() {
+        redChainActive = false;
+        try {
+          onComplete();
+        } catch (_) {
+          redChainQueue = [];
+          syncViewport();
+          scheduleLayout();
+        }
+      }
+
+      function tick() {
+        if (rowIdx >= rows.length) {
+          finishChain();
+          return;
+        }
+        try {
+          const r = rows[rowIdx];
+          const lineStep = rowIdx + 1;
+          rowIdx++;
+          const hiddenInRow = [];
+          for (let c = 0; c < HEX_COLS; c++) {
+            const cell = getCell(c, r);
+            if (cell && cell.state === "hidden") hiddenInRow.push([c, r, cell]);
+          }
+          for (const [c, cr] of hiddenInRow) {
+            playBombSound();
+            popEffects.push({ c, r: cr, until: performance.now() + 280 });
+          }
+          if (lineStep === RED_BLAST_ROWS) {
+            lastRedRevealRow = r;
+            const pairs = hiddenInRow.map(([c, cr]) => [c, cr]);
+            const values = assignRevealValues(pairs);
+            for (let i = 0; i < hiddenInRow.length; i++) {
+              const [c, cr, cell] = hiddenInRow[i];
+              cell.state = "revealed";
+              cell.value = values[i];
+              delete cell.special;
+            }
+          } else {
+            for (const [c, cr] of hiddenInRow) {
+              setCell(c, cr, makeEmpty());
+            }
+          }
+          if (hiddenInRow.length > 0) {
+            tilesBroken += hiddenInRow.length;
+            addScore(hiddenInRow.length);
+          }
+          draw();
+        } catch (_) {
+          finishChain();
+          return;
+        }
+        setTimeout(tick, RED_CHAIN_STEP_MS);
+      }
+
+      tick();
+    }
+
+    function processRedChainQueue() {
+      if (!redChainQueue.length) {
+        redChainActive = false;
+        const revealRow = lastRedRevealRow;
+        lastRedRevealRow = null;
+        if (revealRow != null) syncViewportAfterRedBlast(revealRow);
+        else syncViewportNoDropFill();
+        scheduleLayout();
+        checkGameEnd(true);
+        return;
+      }
+      redChainActive = true;
+      const [c, r] = redChainQueue.shift();
+      runRedColumnChainAnimated(c, r, processRedChainQueue);
+    }
+
+    function enqueueRedChain(c, r) {
+      redChainQueue.push([c, r]);
+      if (!redChainActive) processRedChainQueue();
     }
 
     function cancelRoulette() {
@@ -1311,12 +1579,14 @@
           localStorage.setItem(HIGH_SCORE_KEY, String(highScore));
         } catch (_) {}
       }
+      updateTierDisplays();
       grantBonusMilestones();
     }
 
     function breakNeighborsOf(pairCells) {
       const adj = uniqueNeighborCells(pairCells);
       const toReveal = [];
+      const redTriggers = [];
       for (const [c, r] of adj) {
         if (pairCells.some(([pc, pr]) => pc === c && pr === r)) continue;
         if (c < 0 || c >= HEX_COLS) continue;
@@ -1327,6 +1597,10 @@
           setCell(c, r, cell);
         }
         if (cell.state !== "hidden") continue;
+        if (cell.special === "red") {
+          redTriggers.push([c, r]);
+          continue;
+        }
         toReveal.push([c, r, cell]);
       }
       const values = assignRevealValues(toReveal);
@@ -1335,12 +1609,19 @@
         cell.value = values[i];
         cell.state = "revealed";
         popEffects.push({ c, r, until: performance.now() + 280 });
+        if (cell.special === "yellow") {
+          delete cell.special;
+          triggerYellowBonus();
+        }
       }
       if (toReveal.length > 0) {
         tilesBroken += toReveal.length;
         addScore(toReveal.length);
       }
-      return toReveal.length;
+      for (const [c, r] of redTriggers) {
+        enqueueRedChain(c, r);
+      }
+      return toReveal.length + redTriggers.length;
     }
 
     function collapseMergedCell(c, r) {
@@ -1364,12 +1645,13 @@
       return !hasMergeMove();
     }
 
-    function checkGameEnd() {
+    function checkGameEnd(skipSync) {
       if (!gameRunning || mergeCount < 1) return;
-      syncViewport();
+      if (bombPhase !== "idle" || isRedChainPending()) return;
+      if (!skipSync) syncViewport();
       updateBonusButton();
       if (shouldEndGame()) {
-        if (bonusCredits > 0 && bombPhase === "idle") return;
+        if (bonusCredits > 0) return;
         endGame();
       }
     }
@@ -1385,7 +1667,9 @@
       playClearSound(2 + broken);
       collapseMergedCell(fromC, fromR);
       collapseMergedCell(toC, toR);
-      syncViewport();
+      if (!isRedChainPending()) {
+        syncViewport();
+      }
       scheduleLayout();
     }
 
@@ -1409,6 +1693,23 @@
       ctx.strokeStyle = strokeStyle;
       ctx.lineWidth = lineW;
       ctx.stroke();
+    }
+
+    function drawSpecialBorder(cx, cy, special) {
+      const isRed = special === "red";
+      ctx.save();
+      pathHexAt(cx, cy);
+      ctx.fillStyle = isRed ? "rgba(213, 0, 0, 0.28)" : "rgba(255, 179, 0, 0.32)";
+      ctx.fill();
+      pathHexAt(cx, cy);
+      ctx.strokeStyle = isRed ? "#c62828" : "#ff8f00";
+      ctx.lineWidth = Math.max(4, hexSize * 0.14);
+      ctx.stroke();
+      pathHexAt(cx, cy);
+      ctx.strokeStyle = isRed ? "rgba(255, 82, 82, 0.95)" : "rgba(255, 214, 0, 0.95)";
+      ctx.lineWidth = Math.max(2, hexSize * 0.06);
+      ctx.stroke();
+      ctx.restore();
     }
 
     function drawClearPopHex(cx, cy) {
@@ -1493,6 +1794,10 @@
 
           if (cell.state === "empty") {
             drawHex(x, y, "#bcdcff", "rgba(26,74,138,0.15)", 1);
+            const emptyPop = popEffects.find((e) => e.c === c && e.r === r);
+            if (emptyPop) {
+              drawHex(x, y, "rgba(255,230,102,0.35)", "#ffb703", 2);
+            }
             continue;
           }
 
@@ -1508,6 +1813,9 @@
               ctx.strokeStyle = "rgba(26,74,138,0.2)";
               ctx.lineWidth = 1.2;
               ctx.stroke();
+            }
+            if (cell.special === "red" || cell.special === "yellow") {
+              drawSpecialBorder(x, y, cell.special);
             }
           }
 
@@ -1535,7 +1843,7 @@
             drawHex(x, y, "rgba(255, 230, 102, 0.55)", "#ffb703", 2.5);
           }
           const pop = popEffects.find((e) => e.c === c && e.r === r);
-          if (pop && cell.state === "hidden") {
+          if (pop) {
             drawHex(x, y, "rgba(255,230,102,0.35)", "#ffb703", 2);
           }
           if (val != null && !isDragSource) cells.push({ x, y, val });
@@ -1572,9 +1880,16 @@
 
     function endGame() {
       if (!shouldEndGame()) return;
+      redChainActive = false;
+      redChainQueue = [];
+      lastRedRevealRow = null;
       if (bombToastTimer) {
         clearTimeout(bombToastTimer);
         bombToastTimer = null;
+      }
+      if (yellowToastTimer) {
+        clearTimeout(yellowToastTimer);
+        yellowToastTimer = null;
       }
       cancelRoulette();
       hideBombToast();
@@ -1594,13 +1909,21 @@
       bonusCredits = 0;
       bonusMilestonesGranted = 0;
       bombPicksLeft = 0;
+      redChainActive = false;
+      redChainQueue = [];
+      lastRedRevealRow = null;
       if (bombToastTimer) {
         clearTimeout(bombToastTimer);
         bombToastTimer = null;
       }
+      if (yellowToastTimer) {
+        clearTimeout(yellowToastTimer);
+        yellowToastTimer = null;
+      }
       cancelRoulette();
       hideBombToast();
       closeBonusInfoModal();
+      closeTierInfoModal();
       setBombPhase("idle");
       scoreEl.textContent = "0";
       popEffects = [];
@@ -1609,6 +1932,7 @@
       overlay.classList.remove("show");
       overlay.setAttribute("aria-hidden", "true");
       updateBonusButton();
+      updateTierDisplays();
       syncViewport();
       scheduleLayout();
     }
@@ -1623,7 +1947,7 @@
 
     function onPointerDown(e) {
       if (!gameRunning) return;
-      if (isBonusRescueActive()) return;
+      if (isBonusRescueActive() || isRedChainPending()) return;
       e.preventDefault();
       const { px, py } = pointerPos(e);
 
@@ -1660,7 +1984,7 @@
     }
 
     function onPointerMove(e) {
-      if (bombPhase !== "idle") return;
+      if (bombPhase !== "idle" || isRedChainPending()) return;
       if (!drag || !drag.active) return;
       const { px, py } = pointerPos(e);
       drag.x = px;
@@ -1683,7 +2007,7 @@
     let dragEnding = false;
 
     function finishDrag(e) {
-      if (bombPhase !== "idle") return;
+      if (bombPhase !== "idle" || isRedChainPending()) return;
       if (!drag || !drag.active || dragEnding) return;
       dragEnding = true;
       canvas.classList.remove("dragging");
@@ -1730,6 +2054,7 @@
         applyMergeTen(fromC, fromR, target[0], target[1]);
         draw();
         setTimeout(() => {
+          if (isRedChainPending()) return;
           syncViewport();
           scheduleLayout();
           checkGameEnd();
@@ -1747,6 +2072,19 @@
       highScore = parseInt(localStorage.getItem(HIGH_SCORE_KEY) || "0", 10) || 0;
     } catch (_) {}
     highEl.textContent = String(highScore);
+    buildTierTable();
+    updateTierDisplays();
+
+    tierInfoBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openTierInfoModal();
+    });
+    tierInfoCloseBtn.addEventListener("click", () => {
+      closeTierInfoModal();
+    });
+    tierInfoModal.addEventListener("click", (e) => {
+      if (e.target === tierInfoModal) closeTierInfoModal();
+    });
 
     bonusBtn.addEventListener("click", () => {
       activateBonus();
